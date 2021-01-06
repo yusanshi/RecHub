@@ -1,0 +1,29 @@
+{
+  "graph": {
+    "node": [
+      {
+        "name": "item",
+        "attribute": []
+      },
+      {
+        "name": "user",
+        "attribute": []
+      }
+    ],
+    "edge": [
+      {
+        "scheme": ["user", "interact", "item"],
+        "filename": "user-item-interact.tsv",
+        "weighted": false
+      }
+    ]
+  },
+  "task": [
+    {
+      "name": "user-item-recommendation",
+      "filename": "user-item-interact.tsv",
+      "type": "link-prediction",
+      "weight": 1
+    }
+  ]
+}

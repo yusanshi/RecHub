@@ -1,0 +1,79 @@
+{
+  "graph": {
+    "node": [
+      {
+        "name": "item",
+        "attribute": [
+          {
+            "name": "name",
+            "type": "textual"
+          },
+          {
+            "name": "first_category",
+            "type": "categorical"
+          },
+          {
+            "name": "second_category",
+            "type": "categorical"
+          },
+          {
+            "name": "third_category",
+            "type": "categorical"
+          },
+          {
+            "name": "brand",
+            "type": "categorical"
+          },
+          {
+            "name": "source",
+            "type": "categorical"
+          },
+          {
+            "name": "scaled_price",
+            "type": "numeric"
+          }
+        ]
+      },
+      {
+        "name": "user",
+        "attribute": [
+          {
+            "name": "gender",
+            "type": "categorical"
+          },
+          {
+            "name": "born_year",
+            "type": "categorical"
+          },
+          {
+            "name": "province",
+            "type": "categorical"
+          },
+          {
+            "name": "city",
+            "type": "categorical"
+          },
+          {
+            "name": "county",
+            "type": "categorical"
+          }
+        ]
+      }
+    ],
+    "edge": [
+      {
+        "scheme": ["user", "purchase", "item"],
+        "filename": "user-item-purchase.tsv",
+        "weighted": false
+      }
+    ]
+  },
+  "task": [
+    {
+      "name": "user-item-conversion-prediction",
+      "filename": "user-item-purchase.tsv",
+      "type": "link-prediction",
+      "weight": 1
+    }
+  ]
+}
