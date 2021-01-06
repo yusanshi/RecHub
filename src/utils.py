@@ -3,7 +3,7 @@ import pandas as pd
 import random
 import time
 import dgl
-from model.HN import HeterogeneousNetwork
+from model.HET import HeterogeneousNetwork
 from model.NCF import NCF
 from sklearn.metrics import roc_auc_score, ndcg_score
 import torch
@@ -54,10 +54,11 @@ class EarlyStopping:
 
 @torch.no_grad()
 def evaluate(model, tasks, mode):
-    if args.model_name.startswith('HN'):
+    if not (len(tasks) == 1 and tasks[0]['type'] == 'link-prediction'):
+        raise NotImplementedError
+
+    if is_graph_model():
         node_embeddings = model()
-    if args.model_name == 'NCF':
-        assert len(tasks) == 1 and tasks[0]['type'] == 'link-prediction'
 
     metrics = {}
     for task in tasks:
@@ -84,7 +85,7 @@ def evaluate(model, tasks, mode):
                                          (8 * args.batch_size)]
                 item_index = item_indexs[i * (8 * args.batch_size):(i + 1) *
                                          (8 * args.batch_size)]
-                if args.model_name.startswith('HN'):
+                if is_graph_model():
                     y_pred = torch.sigmoid(
                         torch.mul(
                             node_embeddings['user'][user_index],
@@ -116,6 +117,8 @@ def evaluate(model, tasks, mode):
                 np.average(
                     [recall(x, y, k=10) for x, y in zip(y_trues, y_preds)])
             }
+        elif task['type'] == 'edge-attribute-regression':
+            raise NotImplementedError
         else:
             raise NotImplementedError
 
@@ -158,7 +161,17 @@ def create_model(metadata, logger):
         if len(node['attribute']) != 0:
             logger.warning(
                 f"The attributes of node {node['name']} are ignored")
-    if args.model_name.startswith('HN'):
+
+    if is_graph_model():
+        if 'HET' in args.model_name:
+            assert len(
+                metadata['graph']['edge']
+            ) > 1, 'You have chosen a model for heterogeneous graph, but only single type of edge exists'
+        else:
+            assert len(
+                metadata['graph']['edge']
+            ) == 1, 'You have chosen a model for homogeneous graph, but more than one types of edge exists'
+
         graph_data = {}
         for edge in metadata['graph']['edge']:
             df = pd.read_table(
@@ -283,3 +296,7 @@ def get_train_df(task, epoch, logger):
         return df
 
     raise NotImplementedError
+
+
+def is_graph_model():
+    return any([x in args.model_name for x in ['GCN', 'GAT', 'NGCF']])

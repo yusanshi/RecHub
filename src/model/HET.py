@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 from model.general.additive_attention import AdditiveAttention
 import dgl
-from model.HN.aggregator.GCN import GCN
-from model.HN.aggregator.GAT import GAT
+from model.GCN import GCN
+from model.GAT import GAT
+from model.NGCF import NGCF
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -18,28 +19,33 @@ class HeterogeneousNetwork(torch.nn.Module):
                                     args.node_embedding_dim)
             for node_name in graph.ntypes
         })
-        if args.model_name.endswith('GCN'):
+        if 'GCN' in args.model_name:
             self.aggregator = GCN(
                 args.node_embedding_dim,
                 args.node_embedding_dim,
                 args.node_embedding_dim,
             )
-        elif args.model_name.endswith('GAT'):
+        elif 'GAT' in args.model_name:
             self.aggregator = GAT(
                 args.node_embedding_dim,
                 args.node_embedding_dim // args.num_attention_heads,
                 args.node_embedding_dim, args.num_attention_heads)
+        elif 'NGCF' in args.model_name:
+            self.aggregator = NGCF()
         else:
-            raise ValueError('Unknown model')
-        self.mask = {
-            node_name: torch.tensor([
-                node_name in [canonical_edge_type[0], canonical_edge_type[2]]
-                for canonical_edge_type in graph.canonical_etypes
-            ])
-            for node_name in graph.ntypes
-        }
-        self.additive_attention = AdditiveAttention(
-            args.attention_query_vector_dim, args.node_embedding_dim)
+            raise ValueError('Unknown aggregator')
+
+        if 'HET' in args.model_name:
+            self.mask = {
+                node_name: torch.tensor([
+                    node_name
+                    in [canonical_edge_type[0], canonical_edge_type[2]]
+                    for canonical_edge_type in graph.canonical_etypes
+                ])
+                for node_name in graph.ntypes
+            }
+            self.additive_attention = AdditiveAttention(
+                args.attention_query_vector_dim, args.node_embedding_dim)
 
     def forward(self):
         computed = {}
@@ -70,6 +76,17 @@ class HeterogeneousNetwork(torch.nn.Module):
                           )] = embeddings[:self.graph.num_nodes(ntypes[0])]
                 computed[(ntypes[1], canonical_edge_type
                           )] = embeddings[self.graph.num_nodes(ntypes[0]):]
+
+        # Don't need to aggregated multiple embedding for a node
+        # if only single type of edge exists
+        if 'HET' not in self.args.model_name:
+            return {
+                node_name:
+                computed[(node_name, self.graph.canonical_etypes[0])]
+                for node_name in self.graph.ntypes
+            }
+
+        # Else aggregated them
         vectors = {
             node_name: {
                 canonical_edge_type:
@@ -81,6 +98,7 @@ class HeterogeneousNetwork(torch.nn.Module):
             }
             for node_name in self.graph.ntypes
         }
+
         aggregated_vectors = {
             node_name: self.additive_attention(
                 torch.stack(list(vectors[node_name].values()), dim=1),
@@ -105,7 +123,7 @@ if __name__ == '__main__':
     graph = graph.to(device)
     from parameters import parse_args
     args = parse_args()
-    for x in ['HN-GCN', 'HN-GAT']:
+    for x in ['HET-GCN', 'HET-GAT']:
         args.model_name = x
         model = HeterogeneousNetwork(args, graph).to(device)
         node_embeddings = model()

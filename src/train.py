@@ -5,7 +5,7 @@ import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, get_train_df
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, get_train_df, is_graph_model
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
@@ -57,7 +57,7 @@ def train():
                                            unit='epochs')
     for epoch in pbar(range(1, args.num_epochs + 1)):
         loss = 0
-        if args.model_name.startswith('HN'):
+        if is_graph_model():
             node_embeddings = model()
             for task in metadata['task']:
                 if task['type'] == 'link-prediction':
@@ -74,7 +74,7 @@ def train():
                 elif task['type'] == 'edge-attribute-regression':
                     raise NotImplementedError
                 else:
-                    raise ValueError
+                    raise NotImplementedError
 
         elif args.model_name == 'NCF':
             assert len(metadata['task']) == 1

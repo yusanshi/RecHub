@@ -2,6 +2,36 @@
 
 Implementations of some methods in recommendation.
 
+## Models
+
+| Model    | Full name | Type                | Paper |
+| -------- | --------- | ------------------- | ----- |
+| NCF      |           | Non-graph           |       |
+| GCN      |           | Homogeneous graph   |       |
+| GAT      |           | Homogeneous graph   |       |
+| NGCF     |           | Homogeneous graph   |       |
+| HET-GCN  | /         | Heterogeneous graph | /     |
+| HET-GAT  | /         | Heterogeneous graph | /     |
+| HET-NGCF | /         | Heterogeneous graph | /     |
+|          |           |                     |       |
+|          |           |                     |       |
+
+> Note: we define the heterogeneous graph as a graph *with different types of **edges*** instead of a graph *with different types of **edges or nodes***. Thus, for a common user-item bipartite graph, although more than one types of node exist, we still think it as a homogeneous graph.
+
+
+
+**WIP**
+
+- DeepFM
+- DSSM
+- LightGCN
+- DiffNet
+- DiffNet++
+- DANSER
+- GraphRec
+- 
+- 
+
 ## Requirements
 
 - Linux-based OS
@@ -36,7 +66,7 @@ python src/train.py
 python src/test.py
 ```
 
-You can visualize metrics with TensorBoard.
+You can visualize the metrics with TensorBoard.
 
 ```bash
 tensorboard --logdir runs
@@ -180,5 +210,8 @@ PYTHONPATH=./src:$PYTHONPATH python src/model/NCF.py
 
 ### TODO
 
-1. Wired performance at the beginning of training (e.g. HN-GCN). Need a better weight initialization?
-2. Support attributes.
+1. Support more models.
+2. Wired performance at the beginning of training (e.g., GCN). Need a better weight initialization?
+3. Support node attributes.
+4. Support multiple tasks (e.g., `edge-attribute-regression`).
+

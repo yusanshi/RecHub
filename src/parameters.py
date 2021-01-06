@@ -36,20 +36,20 @@ def parse_args():
     parser.add_argument(
         '--model_name',
         type=str,
-        default='NCF',
+        default='GCN',
         choices=[
             # Non-graph
             'NCF',
 
-            # Graph, single type of edge
+            # Graph with single type of edge (we think it as homogeneous graph)
             'GCN',
             'GAT',
             'NGCF',
 
-            # Graph, multiple types of edge
-            'HN-GCN',
-            'HN-GAT',
-            'HN-NGCF',
+            # Graph with multiple types of edge (we think it as heterogeneous graph)
+            'HET-GCN',
+            'HET-GAT',
+            'HET-NGCF',
 
             # To be categorized
             'DeepFM',
