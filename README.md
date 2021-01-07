@@ -1,4 +1,4 @@
-# Easy Recommendation
+# RecHub
 
 Implementations of some methods in recommendation.
 
@@ -16,9 +16,7 @@ Implementations of some methods in recommendation.
 |          |           |                     |       |
 |          |           |                     |       |
 
-> Note: we define the heterogeneous graph as a graph *with different types of **edges*** instead of a graph *with different types of **edges or nodes***. Thus, for a common user-item bipartite graph, although more than one types of node exist, we still think it as a homogeneous graph.
-
-
+> Note: we define the heterogeneous graph as a graph \*with different types of **edges\*** instead of a graph \*with different types of **edges or nodes\***. Thus, for a common user-item bipartite graph, although more than one types of node exist, we still think it as a homogeneous graph.
 
 **WIP**
 
@@ -29,8 +27,8 @@ Implementations of some methods in recommendation.
 - DiffNet++
 - DANSER
 - GraphRec
-- 
-- 
+-
+-
 
 ## Requirements
 
@@ -42,7 +40,7 @@ Implementations of some methods in recommendation.
 Basic setup.
 
 ```bash
-git clone https://github.com/yusanshi/easy-rec.git && cd easy-rec
+git clone https://github.com/yusanshi/RecHub.git && cd RecHub
 pip install -r requirements.txt
 pip install [DGL] # [DGL] = dgl, dgl-cu92, dgl-cu101, dgl-cu102...
 python -m dgl.backend.set_default_backend pytorch
@@ -162,7 +160,7 @@ Follow the steps to use a custom dataset.
 
    - we use TAB (`\t`) as delimiter in all files.
    - In `val/user-item-interact.tsv` and `test/user-item-interact.tsv`, the number of items for different users should be equal (in the above example, the number of items for a user is 8, with 1 positive items and 7 negative items).
-   - Since we don't use have any attributes for users and items, the `user.tsv` and `user.tsv` files only have one single column (the index of users and items).
+   - Since we don't have any attributes for users and items, the `user.tsv` and `user.tsv` files only have one single column (the index of users and items).
 
 2. Create the metadata file.
 
@@ -214,4 +212,3 @@ PYTHONPATH=./src:$PYTHONPATH python src/model/NCF.py
 2. Wired performance at the beginning of training (e.g., GCN). Need a better weight initialization?
 3. Support node attributes.
 4. Support multiple tasks (e.g., `edge-attribute-regression`).
-
