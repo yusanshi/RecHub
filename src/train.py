@@ -85,6 +85,8 @@ def train():
                 y_true = y_trues[i * args.batch_size:(i + 1) * args.batch_size]
                 loss += criterion(y_pred, y_true) * task['weight']
 
+                # TODO BPR loss for NGCF
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

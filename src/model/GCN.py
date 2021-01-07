@@ -1,5 +1,5 @@
-import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import dgl
 from dgl.nn.pytorch import GraphConv
 
@@ -13,12 +13,13 @@ class GCN(nn.Module):
     def forward(self, g, inputs):
         g = dgl.add_self_loop(g)
         h = self.layer1(g, inputs)
-        h = torch.relu(h)
+        h = F.relu(h)
         h = self.layer2(g, h)
         return h
 
 
 if __name__ == '__main__':
+    import torch
     graph = dgl.graph((torch.randint(10, (20, )), torch.randint(10, (20, ))))
     graph = dgl.to_simple(graph)
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

@@ -71,7 +71,8 @@ class HeterogeneousNetwork(torch.nn.Module):
             else:
                 # src != dest
                 subgraph = dgl.to_bidirected(
-                    dgl.to_homogeneous(subgraph).cpu()).to(device)
+                    dgl.to_homogeneous(subgraph).cpu()
+                ).to(device)  # TODO test performance without `to_bidirected`
                 embeddings = self.aggregator(
                     subgraph,
                     torch.cat((

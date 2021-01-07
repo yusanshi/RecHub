@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import dgl
 from model.NGCF.NGCFConv import NGCFConv
 
@@ -11,9 +12,13 @@ class NGCF(nn.Module):
         self.layer2 = NGCFConv(hidden_size, out_feats)
 
     def forward(self, g, inputs):
-        h = self.layer1(g, inputs)
-        h = torch.relu(h)
-        h = self.layer2(g, h)
+        g = dgl.remove_self_loop(g)
+        h1 = self.layer1(g, inputs)
+        h1 = F.leaky_relu(h1)
+        h2 = self.layer2(g, h1)
+        h2 = F.leaky_relu(h2)
+        h3 = self.layer2(g, h2)
+        h = torch.cat((h1, h2, h3), dim=-1)
         return h
 
 
