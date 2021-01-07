@@ -10,6 +10,9 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class HeterogeneousNetwork(torch.nn.Module):
+    '''
+    A general module for all graph-based models.
+    '''
     def __init__(self, args, graph):
         super(HeterogeneousNetwork, self).__init__()
         self.args = args
@@ -31,7 +34,11 @@ class HeterogeneousNetwork(torch.nn.Module):
                 args.node_embedding_dim // args.num_attention_heads,
                 args.node_embedding_dim, args.num_attention_heads)
         elif 'NGCF' in args.model_name:
-            self.aggregator = NGCF()
+            self.aggregator = NGCF(
+                args.node_embedding_dim,
+                args.node_embedding_dim,
+                args.node_embedding_dim,
+            )
         else:
             raise ValueError('Unknown aggregator')
 
@@ -47,7 +54,9 @@ class HeterogeneousNetwork(torch.nn.Module):
             self.additive_attention = AdditiveAttention(
                 args.attention_query_vector_dim, args.node_embedding_dim)
 
-    def forward(self):
+        self.aggregated_embeddings = None
+
+    def aggregate_embeddings(self):
         computed = {}
         for canonical_edge_type in self.graph.canonical_etypes:
             subgraph = dgl.edge_type_subgraph(self.graph,
@@ -78,14 +87,15 @@ class HeterogeneousNetwork(torch.nn.Module):
         # Don't need to aggregated multiple embedding for a node
         # if only single type of edge exists
         if 'HET' not in self.args.model_name:
-            return {
+            self.aggregated_embeddings = {
                 node_name:
                 computed[(node_name, self.graph.canonical_etypes[0])]
                 for node_name in self.graph.ntypes
             }
+            return
 
         # Else aggregated them
-        vectors = {
+        temp_embeddings = {
             node_name: {
                 canonical_edge_type:
                 computed[(node_name, canonical_edge_type)] if
@@ -97,26 +107,49 @@ class HeterogeneousNetwork(torch.nn.Module):
             for node_name in self.graph.ntypes
         }
 
-        aggregated_vectors = {
+        self.aggregated_embeddings = {
             node_name: self.additive_attention(
-                torch.stack(list(vectors[node_name].values()), dim=1),
+                torch.stack(list(temp_embeddings[node_name].values()), dim=1),
                 self.mask[node_name].expand(self.graph.num_nodes(node_name),
                                             -1))
             for node_name in self.graph.ntypes
         }
 
-        return aggregated_vectors
+    def forward(self, first, second):
+        '''
+        Args:
+            first: {
+                'name': str,
+                'index': (shape) batch_size
+            },
+            second: {
+                'name': str,
+                'index': (shape) batch_size
+            }
+        '''
+        if self.aggregated_embeddings is None:
+            self.aggregate_embeddings()
+
+        return torch.mul(
+            self.aggregated_embeddings[first['name']][first['index']],
+            self.aggregated_embeddings[second['name']][second['index']],
+        ).sum(dim=-1)
 
 
 if __name__ == '__main__':
-    graph = dgl.heterograph({
-        ('user', 'follows', 'user'):
-        (torch.randint(10, (20, )), torch.randint(10, (20, ))),
-        ('user', 'follows', 'topic'):
-        (torch.randint(10, (20, )), torch.randint(10, (20, ))),
-        ('user', 'plays', 'game'): (torch.randint(10, (20, )),
-                                    torch.randint(10, (20, )))
-    })
+    graph = dgl.heterograph(
+        {
+            ('user', 'follows', 'user'):
+            (torch.randint(10, (20, )), torch.randint(10, (20, ))),
+            ('user', 'follows', 'topic'):
+            (torch.randint(10, (20, )), torch.randint(10, (20, ))),
+            ('user', 'plays', 'game'):
+            (torch.randint(10, (20, )), torch.randint(10, (20, )))
+        }, {
+            'user': 10,
+            'topic': 10,
+            'game': 10
+        })
     graph = dgl.to_simple(graph)
     graph = graph.to(device)
     from parameters import parse_args
@@ -124,5 +157,9 @@ if __name__ == '__main__':
     for x in ['HET-GCN', 'HET-GAT']:
         args.model_name = x
         model = HeterogeneousNetwork(args, graph).to(device)
-        node_embeddings = model()
-        print(node_embeddings)
+        first_index = torch.randint(10, (64, )).to(device)
+        second_index = torch.randint(10, (64, )).to(device)
+        first = {'name': 'user', 'index': first_index}
+        second = {'name': 'topic', 'index': second_index}
+        y_pred = model(first, second)
+        print(y_pred)

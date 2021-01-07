@@ -22,7 +22,7 @@
     {
       "name": "user-item-recommendation",
       "filename": "user-item-interact.tsv",
-      "type": "link-prediction",
+      "type": "link-prediction(recommendation)",
       "weight": 1
     }
   ]

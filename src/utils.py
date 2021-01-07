@@ -54,52 +54,39 @@ class EarlyStopping:
 
 @torch.no_grad()
 def evaluate(model, tasks, mode):
-    if not (len(tasks) == 1 and tasks[0]['type'] == 'link-prediction'):
-        raise NotImplementedError
-
-    if is_graph_model():
-        node_embeddings = model()
-
     metrics = {}
     for task in tasks:
-        if task['type'] == 'link-prediction':
-            df = pd.read_table(
-                f"./data/{args.dataset}/{mode}/{task['filename']}")
-            columns = df.columns.tolist()
-            assert columns == ['user', 'item', 'value']
-            df = df.sort_values('user')
-            item_lengths = df.groupby('user').size().values
+        df = pd.read_table(f"./data/{args.dataset}/{mode}/{task['filename']}")
+        columns = df.columns.tolist()
+        df = df.sort_values(columns[0])
+        test_data = np.transpose(df.values)
+        test_data = torch.from_numpy(test_data).to(device)
+        first_indexs, second_indexs, y_trues = test_data
+
+        y_preds = []
+        y_trues = y_trues.cpu().numpy()
+
+        for i in range(math.ceil(len(df) / (8 * args.batch_size))):
+            first_index = first_indexs[i * (8 * args.batch_size):(i + 1) *
+                                       (8 * args.batch_size)]
+            second_index = second_indexs[i * (8 * args.batch_size):(i + 1) *
+                                         (8 * args.batch_size)]
+            first = {'name': columns[0], 'index': first_index}
+            second = {'name': columns[1], 'index': second_index}
+            y_pred = model(first, second)
+            y_pred = y_pred.cpu().numpy()
+            y_preds.append(y_pred)
+
+        y_preds = np.concatenate(y_preds, axis=0)
+
+        if task['type'] == 'link-prediction(recommendation)':
+            second_lengths_for_single_first = df.groupby(
+                columns[0]).size().values
             assert len(
-                set(item_lengths)
-            ) == 1, 'The number of items for different users should be equal'
-            item_length = item_lengths[0]
-            test_data = np.transpose(df.values)
-            test_data = torch.from_numpy(test_data).to(device)
-            user_indexs, item_indexs, y_trues = test_data
-
-            y_preds = []
-            y_trues = y_trues.view(-1, item_length).cpu().numpy()
-
-            for i in range(math.ceil(len(df) / (8 * args.batch_size))):
-                user_index = user_indexs[i * (8 * args.batch_size):(i + 1) *
-                                         (8 * args.batch_size)]
-                item_index = item_indexs[i * (8 * args.batch_size):(i + 1) *
-                                         (8 * args.batch_size)]
-                if is_graph_model():
-                    y_pred = torch.sigmoid(
-                        torch.mul(
-                            node_embeddings['user'][user_index],
-                            node_embeddings['item'][item_index],
-                        ).sum(dim=-1))
-                elif args.model_name == 'NCF':
-                    y_pred = model(user_index, item_index)
-                else:
-                    raise NotImplementedError
-
-                y_pred = y_pred.cpu().numpy()
-                y_preds.append(y_pred)
-
-            y_preds = np.concatenate(y_preds, axis=0).reshape(-1, item_length)
+                set(second_lengths_for_single_first)
+            ) == 1, f'The number of {columns[1]}s for different {columns[0]}s should be equal'
+            y_trues = y_trues.reshape(-1, second_lengths_for_single_first[0])
+            y_preds = y_preds.reshape(-1, second_lengths_for_single_first[0])
 
             # TODO AUC, recall: batch version
             metrics[task['name']] = {
@@ -217,9 +204,10 @@ def create_logger():
 
 def get_train_df(task, epoch, logger):
     '''
+    # TODO: what if names of the two columns are the same
     Get training dataframe with randomly negative sampling and simple cache mechanism
     '''
-    if task['type'] == 'link-prediction':
+    if task['type'] == 'link-prediction(recommendation)':
         # Get cache filename for this epoch of training
         if args.sample_cache:
             cahe_sensitive_keys = [

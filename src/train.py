@@ -52,50 +52,38 @@ def train():
             'Positive sampling and sample cache are enabled. To fully use the data, you should set `num_sample_cache` to a relatively larger value'
         )
 
+    # TODO where to put such warning and assertion
+    if args.model_name == 'NCF':
+        assert len(metadata['task']) == 1 and metadata['task'][0][
+            'type'] == 'link-prediction(recommendation)'
+
     pbar = enlighten.get_manager().counter(total=args.num_epochs,
                                            desc='Training',
                                            unit='epochs')
     for epoch in pbar(range(1, args.num_epochs + 1)):
         loss = 0
         if is_graph_model():
-            node_embeddings = model()
-            for task in metadata['task']:
-                if task['type'] == 'link-prediction':
-                    df = get_train_df(task, epoch, logger)
-                    y_pred = torch.mul(
-                        node_embeddings[df.columns[0]][torch.tensor(
-                            df.iloc[:, 0].values)],
-                        node_embeddings[df.columns[1]][torch.tensor(
-                            df.iloc[:, 1].values)],
-                    ).sum(dim=-1)
-                    y_true = torch.tensor(
-                        df.iloc[:, 2].values).to(device).float()
-                    loss += criterion(y_pred, y_true) * task['weight']
-                elif task['type'] == 'edge-attribute-regression':
-                    raise NotImplementedError
-                else:
-                    raise NotImplementedError
+            model.aggregate_embeddings()
 
-        elif args.model_name == 'NCF':
-            assert len(metadata['task']) == 1
-            task = metadata['task'][0]
-            assert task['type'] == 'link-prediction'
+        for task in metadata['task']:
             df = get_train_df(task, epoch, logger)
             columns = df.columns.tolist()
-            assert columns == ['user', 'item', 'value']
-            df = df.sort_values('user')
+            df = df.sort_values(columns[0])
             train_data = np.transpose(df.values)
             train_data = torch.from_numpy(train_data).to(device)
-            user_indexs, item_indexs, y_trues = train_data
+            first_indexs, second_indexs, y_trues = train_data
             y_trues = y_trues.float()
+
             for i in range(math.ceil(len(df) / args.batch_size)):
-                user_index = user_indexs[i * args.batch_size:(i + 1) *
-                                         args.batch_size]
-                item_index = item_indexs[i * args.batch_size:(i + 1) *
-                                         args.batch_size]
-                y_pred = model(user_index, item_index)
+                first_index = first_indexs[i * args.batch_size:(i + 1) *
+                                           args.batch_size]
+                second_index = second_indexs[i * args.batch_size:(i + 1) *
+                                             args.batch_size]
+                first = {'name': columns[0], 'index': first_index}
+                second = {'name': columns[1], 'index': second_index}
+                y_pred = model(first, second)
                 y_true = y_trues[i * args.batch_size:(i + 1) * args.batch_size]
-                loss += criterion(y_pred, y_true)
+                loss += criterion(y_pred, y_true) * task['weight']
 
         optimizer.zero_grad()
         loss.backward()

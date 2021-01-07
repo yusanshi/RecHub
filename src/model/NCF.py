@@ -33,12 +33,22 @@ class NCF(torch.nn.Module):
                                       1,
                                       bias=False)
 
-    def forward(self, user_index, item_index):
+    def forward(self, first, second):
         '''
         Args:
-            user_index: batch_size
-            item_index: batch_size
+            first: {
+                'name': str,
+                'index': (shape) batch_size
+            },
+            second: {
+                'name': str,
+                'index': (shape) batch_size
+            }
         '''
+        assert first['name'] == 'user' and second['name'] == 'item'
+        user_index = first['index']
+        item_index = second['index']
+
         # batch_size, node_embedding_dim // 4
         GMF_vector = torch.mul(
             self.user_embedding['GMF'](user_index),
@@ -64,5 +74,7 @@ if __name__ == '__main__':
     model = NCF(args, 100, 100).to(device)
     user_index = torch.randint(100, (64, )).to(device)
     item_index = torch.randint(100, (64, )).to(device)
-    y_pred = model(user_index, item_index)
+    first = {'name': 'user', 'index': user_index}
+    second = {'name': 'item', 'index': item_index}
+    y_pred = model(first, second)
     print(y_pred)

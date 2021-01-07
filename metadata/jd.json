@@ -72,7 +72,7 @@
     {
       "name": "user-item-conversion-prediction",
       "filename": "user-item-purchase.tsv",
-      "type": "link-prediction",
+      "type": "link-prediction(recommendation)",
       "weight": 1
     }
   ]

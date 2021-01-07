@@ -191,7 +191,7 @@ Follow the steps to use a custom dataset.
        {
          "name": "user-item-recommendation",
          "filename": "user-item-interact.tsv",
-         "type": "link-prediction",
+         "type": "link-prediction(recommendation)",
          "weight": 1
        }
      ]
