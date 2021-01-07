@@ -56,7 +56,6 @@ class HeterogeneousNetwork(torch.nn.Module):
             if len(ntypes) == 1:
                 # src == dest
                 subgraph = dgl.to_bidirected(subgraph.cpu()).to(device)
-                subgraph = dgl.add_self_loop(subgraph)
                 embeddings = self.aggregator(subgraph,
                                              self.embedding[ntypes[0]].weight)
                 computed[(ntypes[0], canonical_edge_type)] = embeddings
@@ -64,7 +63,6 @@ class HeterogeneousNetwork(torch.nn.Module):
                 # src != dest
                 subgraph = dgl.to_bidirected(
                     dgl.to_homogeneous(subgraph).cpu()).to(device)
-                subgraph = dgl.add_self_loop(subgraph)
                 embeddings = self.aggregator(
                     subgraph,
                     torch.cat((
