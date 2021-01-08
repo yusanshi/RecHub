@@ -5,6 +5,7 @@ from dgl.nn.pytorch import GATConv
 
 
 class GAT(nn.Module):
+    # TODO how to handle heads if use `graph_embedding_dims`
     def __init__(self, in_feats, hidden_size, out_feats, num_heads):
         super(GAT, self).__init__()
         self.layer1 = GATConv(in_feats, hidden_size, num_heads)

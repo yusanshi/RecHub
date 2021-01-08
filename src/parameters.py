@@ -12,7 +12,11 @@ def parse_args():
     parser.add_argument('--num_epochs', type=int, default=2000)
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--node_embedding_dim', type=int, default=200)
+    parser.add_argument('--non_graph_embedding_dim', type=int, default=200)
+    parser.add_argument('--graph_embedding_dims',
+                        type=int,
+                        nargs='+',
+                        default=[200, 128, 96, 64])
     parser.add_argument('--single_attribute_dim', type=int, default=40)
     parser.add_argument('--attention_query_vector_dim', type=int, default=200)
     parser.add_argument('--num_epochs_validate', type=int, default=3)

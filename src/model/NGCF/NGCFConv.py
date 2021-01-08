@@ -10,10 +10,11 @@ def has_self_loop(graph):
 
 
 class NGCFConv(nn.Module):
-    def __init__(self, in_features, out_features):
+    def __init__(self, in_features, out_features, activation=None):
         super(NGCFConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.activation = activation
         self.weight_self = nn.Parameter(torch.empty(in_features, out_features))
         self.weight_interaction = nn.Parameter(
             torch.empty(in_features, out_features))
@@ -60,13 +61,16 @@ class NGCFConv(nn.Module):
 
             rst = rst + torch.matmul(feature_original, self.weight_self)
 
+            if self.activation is not None:
+                rst = self.activation(rst)
+
             return rst
 
     def extra_repr(self):
         """Set the extra representation of the module,
         which will come into effect when printing the model.
         """
-        return f'in={self.in_features}, out={self.out_features}'
+        return f'in={self.in_features}, out={self.out_features}, activation={self.activation}'
 
 
 if __name__ == '__main__':

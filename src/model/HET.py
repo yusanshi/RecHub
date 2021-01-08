@@ -19,26 +19,18 @@ class HeterogeneousNetwork(torch.nn.Module):
         self.graph = graph
         self.embedding = nn.ModuleDict({
             node_name: nn.Embedding(graph.num_nodes(node_name),
-                                    args.node_embedding_dim)
+                                    args.graph_embedding_dims[0])
             for node_name in graph.ntypes
         })
         if 'GCN' in args.model_name:
-            self.aggregator = GCN(
-                args.node_embedding_dim,
-                args.node_embedding_dim,
-                args.node_embedding_dim,
-            )
+            self.aggregator = GCN(args.graph_embedding_dims)
         elif 'GAT' in args.model_name:
             self.aggregator = GAT(
-                args.node_embedding_dim,
-                args.node_embedding_dim // args.num_attention_heads,
-                args.node_embedding_dim, args.num_attention_heads)
+                args.non_graph_embedding_dim,
+                args.non_graph_embedding_dim // args.num_attention_heads,
+                args.non_graph_embedding_dim, args.num_attention_heads)
         elif 'NGCF' in args.model_name:
-            self.aggregator = NGCF(
-                args.node_embedding_dim,
-                args.node_embedding_dim,
-                args.node_embedding_dim,
-            )
+            self.aggregator = NGCF(args.graph_embedding_dims)
         else:
             raise ValueError('Unknown aggregator')
 
@@ -52,11 +44,13 @@ class HeterogeneousNetwork(torch.nn.Module):
                 for node_name in graph.ntypes
             }
             self.additive_attention = AdditiveAttention(
-                args.attention_query_vector_dim, args.node_embedding_dim)
+                args.attention_query_vector_dim, args.graph_embedding_dims[-1]
+            )  # TODO args.graph_embedding_dims[-1] not true
 
         self.aggregated_embeddings = None
 
     def aggregate_embeddings(self):
+        # TODO sample! accept some node indexs as parameters and only update related embeddings
         computed = {}
         for canonical_edge_type in self.graph.canonical_etypes:
             subgraph = dgl.edge_type_subgraph(self.graph,
@@ -102,7 +96,7 @@ class HeterogeneousNetwork(torch.nn.Module):
                 computed[(node_name, canonical_edge_type)] if
                 (node_name, canonical_edge_type) in computed else torch.zeros(
                     self.graph.num_nodes(node_name),
-                    self.args.node_embedding_dim).to(device)
+                    self.args.non_graph_embedding_dim).to(device)
                 for canonical_edge_type in self.graph.canonical_etypes
             }
             for node_name in self.graph.ntypes
