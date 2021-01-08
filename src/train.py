@@ -110,6 +110,8 @@ def train():
                 loss += criterions[task['name']](y_pred,
                                                  y_true) * task['weight']
 
+                # TODO backword in a batch instead of an epoch
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
