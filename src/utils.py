@@ -7,6 +7,7 @@ from model.HET import HeterogeneousNetwork
 from model.NCF import NCF
 from sklearn.metrics import roc_auc_score, ndcg_score
 import torch
+import torch.nn as nn
 from parameters import parse_args
 import os
 import logging
@@ -79,7 +80,7 @@ def evaluate(model, tasks, mode):
 
         y_preds = np.concatenate(y_preds, axis=0)
 
-        if task['type'] == 'link-prediction(recommendation)':
+        if task['type'] == 'top-k-recommendation':
             second_lengths_for_single_first = df.groupby(
                 columns[0]).size().values
             assert len(
@@ -104,7 +105,7 @@ def evaluate(model, tasks, mode):
                 np.average(
                     [recall(x, y, k=10) for x, y in zip(y_trues, y_preds)])
             }
-        elif task['type'] == 'edge-attribute-regression':
+        elif task['type'] == 'interaction-attribute-regression':
             raise NotImplementedError
         else:
             raise NotImplementedError
@@ -207,7 +208,7 @@ def get_train_df(task, epoch, logger):
     # TODO: what if names of the two columns are the same
     Get training dataframe with randomly negative sampling and simple cache mechanism
     '''
-    if task['type'] == 'link-prediction(recommendation)':
+    if task['type'] == 'top-k-recommendation':
         # Get cache filename for this epoch of training
         if args.sample_cache:
             cahe_sensitive_keys = [
@@ -288,3 +289,12 @@ def get_train_df(task, epoch, logger):
 
 def is_graph_model():
     return any([x in args.model_name for x in ['GCN', 'GAT', 'NGCF']])
+
+
+class BPRLoss(nn.Module):
+    def __init__(self):
+        super(BPRLoss, self).__init__()
+        raise NotImplementedError
+
+    def forward(self, input, target):
+        pass

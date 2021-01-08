@@ -1,11 +1,12 @@
 import torch
+import torch.nn as nn
 import numpy as np
 import json
 import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, get_train_df, is_graph_model
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, get_train_df, is_graph_model, BPRLoss
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
@@ -21,6 +22,11 @@ def train():
     model = create_model(metadata, logger).to(device)
     logger.info(model)
 
+    if args.model_name in ['NCF']:
+        assert len(
+            metadata['task']
+        ) == 1 and metadata['task'][0]['type'] == 'top-k-recommendation'
+
     model.eval()
     metrics, _ = evaluate(model, metadata['task'], 'val')
     model.train()
@@ -28,8 +34,31 @@ def train():
     best_checkpoint = copy.deepcopy(model.state_dict())
     best_val_metrics = copy.deepcopy(metrics)
 
-    criterion = torch.nn.BCEWithLogitsLoss(
-    )  # TODO: different criterions based on task
+    criterions = {}
+    for task in metadata['task']:
+        if task['type'] == 'top-k-recommendation':
+            original_loss_map = {
+                'NGCF': 'bpr',
+                'HET-NGCF': 'bpr',
+                # TODO
+            }
+            if args.model_name in original_loss_map and task[
+                    'loss'] != original_loss_map[args.model_name]:
+                logger.warning(
+                    'You are using a different type of loss with the type in the paper'
+                )
+            if task['loss'] == 'log':
+                criterions[task['name']] = nn.BCEWithLogitsLoss()
+            elif task['loss'] == 'bpr':
+                criterions[task['name']] = BPRLoss()
+            else:
+                raise NotImplementedError
+
+        elif task['type'] == 'interaction-attribute-regression':
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     loss_full = []
     early_stopping = EarlyStopping(args.early_stop_patience)
@@ -51,11 +80,6 @@ def train():
         logger.warning(
             'Positive sampling and sample cache are enabled. To fully use the data, you should set `num_sample_cache` to a relatively larger value'
         )
-
-    # TODO where to put such warning and assertion
-    if args.model_name == 'NCF':
-        assert len(metadata['task']) == 1 and metadata['task'][0][
-            'type'] == 'link-prediction(recommendation)'
 
     pbar = enlighten.get_manager().counter(total=args.num_epochs,
                                            desc='Training',
@@ -83,9 +107,8 @@ def train():
                 second = {'name': columns[1], 'index': second_index}
                 y_pred = model(first, second)
                 y_true = y_trues[i * args.batch_size:(i + 1) * args.batch_size]
-                loss += criterion(y_pred, y_true) * task['weight']
-
-                # TODO BPR loss for NGCF
+                loss += criterions[task['name']](y_pred,
+                                                 y_true) * task['weight']
 
         optimizer.zero_grad()
         loss.backward()

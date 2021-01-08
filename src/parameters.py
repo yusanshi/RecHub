@@ -60,10 +60,9 @@ def parse_args():
             'DANSER',
             'GraphRec'
         ])
-    parser.add_argument('--dataset',
-                        type=str,
-                        default='jd',
-                        choices=['jd', 'movielens', 'pinterest'])
+    parser.add_argument('--dataset', type=str, default='jd', choices=[
+        'jd',
+    ])
 
     args = parser.parse_args()
     return args

@@ -72,7 +72,8 @@
     {
       "name": "user-item-conversion-prediction",
       "filename": "user-item-purchase.tsv",
-      "type": "link-prediction(recommendation)",
+      "type": "top-k-recommendation",
+      "loss": "log",
       "weight": 1
     }
   ]

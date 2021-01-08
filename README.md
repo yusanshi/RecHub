@@ -1,4 +1,4 @@
-# RecHub
+# RecHub [WIP]
 
 Implementations of some methods in recommendation.
 
@@ -191,7 +191,7 @@ Follow the steps to use a custom dataset.
        {
          "name": "user-item-recommendation",
          "filename": "user-item-interact.tsv",
-         "type": "link-prediction(recommendation)",
+         "type": "top-k-recommendation",
          "weight": 1
        }
      ]
@@ -211,4 +211,4 @@ PYTHONPATH=./src:$PYTHONPATH python src/model/NCF.py
 1. Support more models.
 2. Wired performance at the beginning of training (e.g., GCN). Need a better weight initialization?
 3. Support node attributes.
-4. Support multiple tasks (e.g., `edge-attribute-regression`).
+4. Support multiple tasks (e.g., `interaction-attribute-regression`).
