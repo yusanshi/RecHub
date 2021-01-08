@@ -1,15 +1,17 @@
 import torch
 import torch.nn as nn
-from model.general.additive_attention import AdditiveAttention
+from model.general.attention.additive import AdditiveAttention
 import dgl
 from model.GCN import GCN
 from model.GAT import GAT
 from model.NGCF import NGCF
+from model.general.predictor.dnn import DNNPredictor
+from model.general.predictor.dot import DotPredictor
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-class HeterogeneousNetwork(torch.nn.Module):
+class HeterogeneousNetwork(nn.Module):
     '''
     A general module for all graph-based models.
     '''
@@ -17,11 +19,14 @@ class HeterogeneousNetwork(torch.nn.Module):
         super(HeterogeneousNetwork, self).__init__()
         self.args = args
         self.graph = graph
-        self.embedding = nn.ModuleDict({
-            node_name: nn.Embedding(graph.num_nodes(node_name),
-                                    args.graph_embedding_dims[0])
-            for node_name in graph.ntypes
-        })
+        if args.model_name == 'GraphRec':
+            pass
+        else:
+            self.embedding = nn.ModuleDict({
+                node_name: nn.Embedding(graph.num_nodes(node_name),
+                                        args.graph_embedding_dims[0])
+                for node_name in graph.ntypes
+            })
         if 'GCN' in args.model_name:
             self.aggregator = GCN(args.graph_embedding_dims)
         elif 'GAT' in args.model_name:
@@ -32,7 +37,7 @@ class HeterogeneousNetwork(torch.nn.Module):
         elif 'NGCF' in args.model_name:
             self.aggregator = NGCF(args.graph_embedding_dims)
         else:
-            raise ValueError('Unknown aggregator')
+            raise NotImplementedError
 
         if 'HET' in args.model_name:
             self.mask = {
@@ -48,6 +53,15 @@ class HeterogeneousNetwork(torch.nn.Module):
             )  # TODO args.graph_embedding_dims[-1] not true
 
         self.aggregated_embeddings = None
+
+        if args.model_name in ['HET-GraphRec']:
+            self.predictor = DNNPredictor()
+        elif args.model_name in [
+                'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF'
+        ]:
+            self.predictor = DotPredictor()
+        else:
+            raise NotImplementedError
 
     def aggregate_embeddings(self):
         # TODO sample! accept some node indexs as parameters and only update related embeddings
@@ -82,6 +96,7 @@ class HeterogeneousNetwork(torch.nn.Module):
         # Don't need to aggregated multiple embedding for a node
         # if only single type of edge exists
         if 'HET' not in self.args.model_name:
+            assert len(self.graph.canonical_etypes) == 1
             self.aggregated_embeddings = {
                 node_name:
                 computed[(node_name, self.graph.canonical_etypes[0])]
@@ -125,10 +140,9 @@ class HeterogeneousNetwork(torch.nn.Module):
         if self.aggregated_embeddings is None:
             self.aggregate_embeddings()
 
-        return torch.mul(
+        return self.predictor(
             self.aggregated_embeddings[first['name']][first['index']],
-            self.aggregated_embeddings[second['name']][second['index']],
-        ).sum(dim=-1)
+            self.aggregated_embeddings[second['name']][second['index']])
 
 
 if __name__ == '__main__':

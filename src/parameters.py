@@ -19,6 +19,10 @@ def parse_args():
                         default=[200, 128, 96, 64])
     parser.add_argument('--single_attribute_dim', type=int, default=40)
     parser.add_argument('--attention_query_vector_dim', type=int, default=200)
+    parser.add_argument('--dnn_predictor_dims',
+                        type=int,
+                        nargs='+',
+                        default=[200, 128, 1])
     parser.add_argument('--num_epochs_validate', type=int, default=3)
     parser.add_argument('--early_stop_patience', type=int, default=30)
     parser.add_argument('--num_attention_heads', type=int, default=10)
@@ -54,6 +58,7 @@ def parse_args():
             'HET-GCN',
             'HET-GAT',
             'HET-NGCF',
+            'HET-GraphRec',
 
             # To be categorized
             'DeepFM',
@@ -61,8 +66,7 @@ def parse_args():
             'LightGCN',
             'DiffNet',
             'DiffNet++',
-            'DANSER',
-            'GraphRec'
+            'DANSER'
         ])
     parser.add_argument('--dataset', type=str, default='jd', choices=[
         'jd',

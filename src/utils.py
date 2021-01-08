@@ -160,6 +160,17 @@ def create_model(metadata, logger):
                 metadata['graph']['edge']
             ) == 1, 'You have chosen a model for homogeneous graph, but more than one types of edge exists'
 
+        if args.model_name == 'HET-GraphRec':
+            assert len(metadata['graph']['edge']) == 2
+            node_names = [
+                metadata['graph']['edge'][0]['scheme'][0],
+                metadata['graph']['edge'][0]['scheme'][2],
+                metadata['graph']['edge'][1]['scheme'][0],
+                metadata['graph']['edge'][1]['scheme'][2],
+            ]
+            assert node_names.count('user') == 3 and node_names.count(
+                'item') == 3
+
         graph_data = {}
         for edge in metadata['graph']['edge']:
             df = pd.read_table(
@@ -288,7 +299,15 @@ def get_train_df(task, epoch, logger):
 
 
 def is_graph_model():
-    return any([x in args.model_name for x in ['GCN', 'GAT', 'NGCF']])
+    if args.model_name in ['NCF']:
+        return False
+    if args.model_name in [
+            'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF',
+            'HET-GraphRec'
+    ]:
+        return True
+
+    raise NotImplementedError
 
 
 class BPRLoss(nn.Module):

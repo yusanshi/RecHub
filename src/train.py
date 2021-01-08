@@ -22,7 +22,7 @@ def train():
     model = create_model(metadata, logger).to(device)
     logger.info(model)
 
-    if args.model_name in ['NCF']:
+    if args.model_name in ['NCF', 'HET-GraphRec']:
         assert len(
             metadata['task']
         ) == 1 and metadata['task'][0]['type'] == 'top-k-recommendation'

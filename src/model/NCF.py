@@ -4,7 +4,7 @@ import torch.nn as nn
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-class NCF(torch.nn.Module):
+class NCF(nn.Module):
     def __init__(self, args, user_num, item_num):
         super(NCF, self).__init__()
         self.args = args
