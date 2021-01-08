@@ -14,8 +14,7 @@ class AdditiveAttention(torch.nn.Module):
         self.linear = nn.Linear(candidate_vector_dim,
                                 attention_query_vector_dim)
         self.attention_query_vector = nn.Parameter(
-            torch.empty(attention_query_vector_dim))
-        nn.init.xavier_uniform_(self.attention_query_vector)
+            torch.empty(attention_query_vector_dim).uniform_(-0.1, 0.1))
 
     def forward(self, candidate_vector, mask):
         """
