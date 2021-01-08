@@ -3,7 +3,6 @@ import torch.nn as nn
 
 import dgl.function as fn
 from dgl.base import DGLError
-from dgl.utils import expand_as_pair
 
 
 def has_self_loop(graph):
@@ -36,22 +35,18 @@ class NGCFConv(nn.Module):
             shp = norm.shape + (1, ) * (feature.dim() - 1)
             norm = torch.reshape(norm, shp)
             feature = feature * norm
-            # TODO norm for interaction part?
 
-            graph.srcdata['h_self'] = feature
-            graph.update_all(fn.copy_u('h_self', 'm_self'),
-                             fn.sum('m_self', 'h_self'))
+            graph.srcdata['h'] = feature
+            graph.srcdata['h_original'] = feature_original
+
+            graph.update_all(fn.copy_u('h', 'm'), fn.sum('m', 'h_self'))
 
             def message_func(edges):
                 return {
-                    'm_interaction':
-                    torch.mul(edges.src['h_interaction'],
-                              edges.dst['h_interaction'])
+                    'm': torch.mul(edges.src['h'], edges.dst['h_original'])
                 }
 
-            graph.srcdata['h_interaction'] = feature
-            graph.update_all(message_func,
-                             fn.sum('m_interaction', 'h_interaction'))
+            graph.update_all(message_func, fn.sum('m', 'h_interaction'))
 
             rst = torch.matmul(
                 graph.dstdata['h_self'], self.weight_self) + torch.matmul(
@@ -63,7 +58,7 @@ class NGCFConv(nn.Module):
             norm = torch.reshape(norm, shp)
             rst = rst * norm
 
-            rst = (rst + feature_original) / 2  # TODO
+            rst = rst + torch.matmul(feature_original, self.weight_self)
 
             return rst
 
@@ -72,3 +67,17 @@ class NGCFConv(nn.Module):
         which will come into effect when printing the model.
         """
         return f'in={self.in_features}, out={self.out_features}'
+
+
+if __name__ == '__main__':
+    import dgl
+    graph = dgl.graph(([0, 0, 1, 2, 2], [1, 2, 2, 1, 0]))
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    graph = graph.to(device)
+    model = NGCFConv(2, 2).to(device)
+    inputs = torch.tensor([
+        [0.2, 0.5],
+        [0.6, 0.4],
+        [0.3, 0.3],
+    ]).to(device)
+    print(model(graph, inputs))

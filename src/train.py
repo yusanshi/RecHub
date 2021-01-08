@@ -68,7 +68,7 @@ def train():
         for task in metadata['task']:
             df = get_train_df(task, epoch, logger)
             columns = df.columns.tolist()
-            df = df.sort_values(columns[0])
+            df = df.sort_values(columns[0])  # TODO shuffle?
             train_data = np.transpose(df.values)
             train_data = torch.from_numpy(train_data).to(device)
             first_indexs, second_indexs, y_trues = train_data
