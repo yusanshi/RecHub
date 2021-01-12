@@ -33,13 +33,13 @@ def parse_args():
     parser.add_argument('--negative_sampling_ratio', type=int, default=4)
     parser.add_argument('--positive_sampling',
                         type=str2bool,
-                        default=False,
+                        default=True,
                         help='whether to sample from multiple')
     parser.add_argument('--sample_cache',
                         type=str2bool,
                         default=True,
                         help='whether to cache training samples')
-    parser.add_argument('--num_sample_cache', type=int, default=20)
+    parser.add_argument('--num_sample_cache', type=int, default=200)
 
     parser.add_argument(
         '--model_name',

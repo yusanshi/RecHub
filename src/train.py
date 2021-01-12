@@ -6,11 +6,12 @@ import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, get_train_df, is_graph_model, BPRLoss
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
 import math
+from sampler import Sampler
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
@@ -34,8 +35,13 @@ def train():
     best_checkpoint = copy.deepcopy(model.state_dict())
     best_val_metrics = copy.deepcopy(metrics)
 
+    samplers = {}
     criterions = {}
     for task in metadata['task']:
+        # samplers
+        samplers[task['name']] = Sampler(task, args, logger)
+
+        # criterions
         if task['type'] == 'top-k-recommendation':
             original_loss_map = {
                 'NGCF': 'bpr',
@@ -90,7 +96,7 @@ def train():
             model.aggregate_embeddings()
 
         for task in metadata['task']:
-            df = get_train_df(task, epoch, logger)
+            df = samplers[task['name']].sample(epoch)
             columns = df.columns.tolist()
             df = df.sort_values(columns[0])  # TODO shuffle?
             train_data = np.transpose(df.values)
