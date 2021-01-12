@@ -93,7 +93,7 @@ class Sampler:
 
         df_negative = pd.concat(negative_series, axis=1).T
         df_negative = df_negative.explode(columns[1])
-        df_negative[columns[1]] = df_negative[columns[1]].astype(int)
+        df_negative = df_negative.astype(int)
         df_negative['value'] = 0
         df = pd.concat([df_positive, df_negative])
 
