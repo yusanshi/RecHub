@@ -40,7 +40,7 @@ def parse_args():
                         type=str2bool,
                         default=True,
                         help='whether to cache training samples')
-    parser.add_argument('--num_sample_cache', type=int, default=200)
+    parser.add_argument('--num_sample_cache', type=int, default=500)
 
     parser.add_argument(
         '--model_name',

@@ -1,28 +1,10 @@
 import os
 import pandas as pd
+import numpy as np
 import random
 import hashlib
-from multiprocessing import Pool
 from parameters import parse_args
-
 args = parse_args()
-
-_positive_map = None
-_candidate_length = None
-_columns = None
-
-
-def negative_sampling(first_index):
-    if args.strict_negative:
-        candidates = set(range(_candidate_length)) - set(
-            _positive_map[first_index])
-    else:
-        candidates = range(_candidate_length)
-    new_row = [
-        first_index,
-        random.sample(candidates, args.negative_sampling_ratio)
-    ]
-    return pd.Series(new_row, index=_columns)
 
 
 class Sampler:
@@ -70,9 +52,10 @@ class Sampler:
             f"./data/{args.dataset}/train/{self.task['filename']}")
         columns = df_positive.columns.tolist()
         assert len(columns) == 2 and 'value' not in columns
+
         if args.strict_negative:
-            _positive_map = df_positive.groupby(
-                columns[0]).agg(list).to_dict()[columns[1]]
+            positive_set = set(map(tuple, df_positive.values))
+
         if args.positive_sampling:
             df_positive = df_positive.sample(frac=1)
             df_positive_first_based = df_positive.drop_duplicates(columns[0])
@@ -83,17 +66,34 @@ class Sampler:
 
         df_positive['value'] = 1
 
-        _candidate_length = len(
+        candidate_length = len(
             pd.read_table(f"./data/{args.dataset}/train/{columns[1]}.tsv"))
-        _columns = columns
 
-        with Pool(processes=args.num_workers) as pool:
-            negative_series = pool.map(negative_sampling,
-                                       df_positive[columns[0]].values)
+        first_indexs = np.repeat(df_positive[columns[0]].values,
+                                 args.negative_sampling_ratio)
+        second_indexs = np.random.randint(candidate_length,
+                                          size=len(first_indexs))
 
-        df_negative = pd.concat(negative_series, axis=1).T
-        df_negative = df_negative.explode(columns[1])
-        df_negative = df_negative.astype(int)
+        if args.strict_negative:
+            negative_set = set(zip(first_indexs, second_indexs))
+            common = positive_set & negative_set
+            negative_set = negative_set - positive_set
+            for x in common:
+                first_index = x[0]
+                while True:
+                    pair = (first_index,
+                            random.choice(range(candidate_length)))
+                    if pair not in negative_set and pair not in positive_set:
+                        negative_set.add(pair)
+                        break
+
+            df_negative = pd.DataFrame(np.array([*negative_set]),
+                                       columns=columns)
+        else:
+            df_negative = pd.DataFrame(np.stack((first_indexs, second_indexs),
+                                                axis=-1),
+                                       columns=columns)
+
         df_negative['value'] = 0
         df = pd.concat([df_positive, df_negative])
 
