@@ -111,7 +111,7 @@ class HeterogeneousNetwork(nn.Module):
                 computed[(node_name, canonical_edge_type)] if
                 (node_name, canonical_edge_type) in computed else torch.zeros(
                     self.graph.num_nodes(node_name),
-                    self.args.non_graph_embedding_dim).to(device)
+                    self.args.graph_embedding_dims[-1]).to(device)
                 for canonical_edge_type in self.graph.canonical_etypes
             }
             for node_name in self.graph.ntypes

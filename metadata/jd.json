@@ -3,61 +3,15 @@
     "node": [
       {
         "name": "item",
-        "attribute": [
-          {
-            "name": "name",
-            "type": "textual"
-          },
-          {
-            "name": "first_category",
-            "type": "categorical"
-          },
-          {
-            "name": "second_category",
-            "type": "categorical"
-          },
-          {
-            "name": "third_category",
-            "type": "categorical"
-          },
-          {
-            "name": "brand",
-            "type": "categorical"
-          },
-          {
-            "name": "source",
-            "type": "categorical"
-          },
-          {
-            "name": "scaled_price",
-            "type": "numeric"
-          }
-        ]
+        "attribute": []
       },
       {
         "name": "user",
-        "attribute": [
-          {
-            "name": "gender",
-            "type": "categorical"
-          },
-          {
-            "name": "born_year",
-            "type": "categorical"
-          },
-          {
-            "name": "province",
-            "type": "categorical"
-          },
-          {
-            "name": "city",
-            "type": "categorical"
-          },
-          {
-            "name": "county",
-            "type": "categorical"
-          }
-        ]
+        "attribute": []
+      },
+      {
+        "name": "anchor",
+        "attribute": []
       }
     ],
     "edge": [
@@ -65,13 +19,37 @@
         "scheme": ["user", "purchase", "item"],
         "filename": "user-item-purchase.tsv",
         "weighted": false
+      },
+      {
+        "scheme": ["user", "follow", "anchor"],
+        "filename": "user-anchor-follow.tsv",
+        "weighted": false
+      },
+      {
+        "scheme": ["anchor", "sell", "item"],
+        "filename": "anchor-item-sell.tsv",
+        "weighted": false
       }
     ]
   },
   "task": [
     {
-      "name": "user-item-conversion-prediction",
+      "name": "User purchase item",
       "filename": "user-item-purchase.tsv",
+      "type": "top-k-recommendation",
+      "loss": "log",
+      "weight": 1
+    },
+    {
+      "name": "User follow anchor",
+      "filename": "user-anchor-follow.tsv",
+      "type": "top-k-recommendation",
+      "loss": "log",
+      "weight": 1
+    },
+    {
+      "name": "Anchor sell item",
+      "filename": "anchor-item-sell.tsv",
       "type": "top-k-recommendation",
       "loss": "log",
       "weight": 1

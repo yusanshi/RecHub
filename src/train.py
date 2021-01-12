@@ -39,7 +39,7 @@ def train():
     criterions = {}
     for task in metadata['task']:
         # samplers
-        samplers[task['name']] = Sampler(task, args, logger)
+        samplers[task['name']] = Sampler(task, logger)
 
         # criterions
         if task['type'] == 'top-k-recommendation':

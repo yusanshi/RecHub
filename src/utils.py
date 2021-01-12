@@ -197,17 +197,18 @@ def create_model(metadata, logger):
 
 def create_logger():
     logger = logging.getLogger(__name__)
+    coloredlogs.install(level='DEBUG',
+                        logger=logger,
+                        fmt='%(asctime)s %(levelname)s %(message)s')
     log_dir = f'./log/{args.model_name}-{args.dataset}'
     os.makedirs(log_dir, exist_ok=True)
     log_file_path = os.path.join(
         log_dir,
         f"{str(datetime.datetime.now()).replace(' ', '_').replace(':', '-')}.txt"
     )
+    logger.info(f'Check {log_file_path} for the log of this run')
     file_hander = logging.FileHandler(log_file_path)
     logger.addHandler(file_hander)
-    coloredlogs.install(level='DEBUG',
-                        logger=logger,
-                        fmt='%(asctime)s %(levelname)s %(message)s')
     return logger
 
 

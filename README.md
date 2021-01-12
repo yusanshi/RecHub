@@ -41,9 +41,16 @@ Basic setup.
 
 ```bash
 git clone https://github.com/yusanshi/RecHub.git && cd RecHub
-pip install -r requirements.txt
-pip install [DGL] # [DGL] = dgl, dgl-cu92, dgl-cu101, dgl-cu102...
+pip install -r requirements.txt -U
+pip install [DGL] -U # [DGL] = dgl, dgl-cu92, dgl-cu101, dgl-cu102...
 python -m dgl.backend.set_default_backend pytorch
+```
+
+If you find some compatibility issues, try the specified version of the main packages.
+
+```bash
+torch==1.7.1
+[DGL]==0.5.3
 ```
 
 Download the datasets.

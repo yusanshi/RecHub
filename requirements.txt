@@ -1,8 +1,7 @@
 torch
 pandas
 numpy
-sklearn
+scikit-learn
 tensorboard
-tqdm
 enlighten
 coloredlogs
