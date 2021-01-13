@@ -47,14 +47,12 @@ def parse_args():
 
             # Graph with single type of edge (we think it as homogeneous graph)
             'GCN',
-            'GAT-avg',
-            'GAT-cat',
+            'GAT',
             'NGCF',
 
             # Graph with multiple types of edge (we think it as heterogeneous graph)
             'HET-GCN',
-            'HET-GAT-avg',
-            'HET-GAT-cat',
+            'HET-GAT',
             'HET-NGCF',
             'HET-GraphRec',
 

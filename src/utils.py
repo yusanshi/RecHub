@@ -216,8 +216,8 @@ def is_graph_model():
     if args.model_name in ['NCF']:
         return False
     if args.model_name in [
-            'GCN', 'GAT-avg', 'GAT-cat', 'NGCF', 'HET-GCN', 'HET-GAT',
-            'HET-NGCF', 'HET-GraphRec'
+            'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF',
+            'HET-GraphRec'
     ]:
         return True
 

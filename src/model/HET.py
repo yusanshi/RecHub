@@ -30,19 +30,16 @@ class HeterogeneousNetwork(nn.Module):
         if 'GCN' in args.model_name:
             self.aggregator = GCN(args.graph_embedding_dims)
         elif 'GAT' in args.model_name:
-            if 'avg' in args.model_name:
-                heads_aggregating_method = 'avg'
-            elif 'cat' in args.model_name:
-                heads_aggregating_method = 'cat'
-            else:
-                raise NotImplementedError
             self.aggregator = GAT(args.graph_embedding_dims,
-                                  args.num_attention_heads,
-                                  heads_aggregating_method)
+                                  args.num_attention_heads)
         elif 'NGCF' in args.model_name:
             self.aggregator = NGCF(args.graph_embedding_dims)
         else:
             raise NotImplementedError
+
+        self.final_embedding_dim = self.args.graph_embedding_dims[-1] * (
+            self.args.num_attention_heads
+            if 'GAT' in self.args.model_name else 1)
 
         if 'HET' in args.model_name:
             self.mask = {
@@ -53,17 +50,16 @@ class HeterogeneousNetwork(nn.Module):
                 ])
                 for node_name in graph.ntypes
             }
+
             self.additive_attention = AdditiveAttention(
-                args.attention_query_vector_dim, args.graph_embedding_dims[-1]
-            )  # TODO args.graph_embedding_dims[-1] not true
+                args.attention_query_vector_dim, self.final_embedding_dim)
 
         self.aggregated_embeddings = None
 
         if args.model_name in ['HET-GraphRec']:
             self.predictor = DNNPredictor()
         elif args.model_name in [
-                'GCN', 'GAT-avg', 'GAT-cat', 'NGCF', 'HET-GCN', 'HET-GAT',
-                'HET-NGCF'
+                'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF'
         ]:
             self.predictor = DotPredictor()
         else:
@@ -119,7 +115,7 @@ class HeterogeneousNetwork(nn.Module):
                 computed[(node_name, canonical_edge_type)] if
                 (node_name, canonical_edge_type) in computed else torch.zeros(
                     self.graph.num_nodes(node_name),
-                    self.args.graph_embedding_dims[-1]).to(device)
+                    self.final_embedding_dim).to(device)
                 for canonical_edge_type in self.graph.canonical_etypes
             }
             for node_name in self.graph.ntypes
