@@ -14,7 +14,7 @@ class Sampler:
         # TODO: what if names of the two columns are the same
         if task['type'] == 'top-k-recommendation':
             if args.sample_cache:
-                cahe_sensitive_keys = [
+                args_sensitive_keys = [
                     x for x in list(args.__dict__.keys()) if any([
                         y in x for y in [
                             'positive', 'negative', 'sample', 'sampling',
@@ -22,13 +22,18 @@ class Sampler:
                         ]
                     ])
                 ]
-                cache_sensitive_args = {
+                args_sensitive_dict = {
                     key: args.__dict__[key]
-                    for key in cahe_sensitive_keys
+                    for key in args_sensitive_keys
+                }
+                task_sensitive_dict = {
+                    key: task[key]
+                    for key in ['filename', 'type', 'loss']
                 }
 
-                logger.info(f'Cache sensitive args {cache_sensitive_args}')
-                self.sample_cache_dir = f"./data/{args.dataset}/train/sample/{hashlib.md5((str(task)+str(cache_sensitive_args)).encode('utf-8')).hexdigest()}"
+                logger.info(f'Task sensitive args {task_sensitive_dict}')
+                logger.info(f'Args sensitive args {args_sensitive_dict}')
+                self.sample_cache_dir = f"./data/{args.dataset}/train/sample/{hashlib.md5((str(task_sensitive_dict)+str(args_sensitive_dict)).encode('utf-8')).hexdigest()}"
                 os.makedirs(self.sample_cache_dir, exist_ok=True)
         else:
             raise NotImplementedError

@@ -12,6 +12,8 @@ import enlighten
 import copy
 import math
 from sampler import Sampler
+import functools
+import operator
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
@@ -91,7 +93,8 @@ def train():
                                            desc='Training',
                                            unit='epochs')
     for epoch in pbar(range(1, args.num_epochs + 1)):
-        loss = 0
+        losses = {task['name']: 0 for task in metadata['task']}
+
         if is_graph_model():
             model.aggregate_embeddings()
 
@@ -113,11 +116,18 @@ def train():
                 second = {'name': columns[1], 'index': second_index}
                 y_pred = model(first, second)
                 y_true = y_trues[i * args.batch_size:(i + 1) * args.batch_size]
-                loss += criterions[task['name']](y_pred,
-                                                 y_true) * task['weight']
+                losses[task['name']] += criterions[task['name']](y_pred,
+                                                                 y_true)
 
                 # TODO backword in a batch instead of an epoch
 
+        if len(metadata['task']) > 1:
+            for task in metadata['task']:
+                writer.add_scalar(f"Train/Loss/{task['name']}",
+                                  losses[task['name']].item(), epoch)
+        loss = functools.reduce(operator.add, [
+            losses[task['name']] * task['weight'] for task in metadata['task']
+        ])
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
