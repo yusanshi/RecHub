@@ -14,17 +14,9 @@ class Sampler:
         # TODO: what if names of the two columns are the same
         if task['type'] == 'top-k-recommendation':
             if args.sample_cache:
-                args_sensitive_keys = [
-                    x for x in list(args.__dict__.keys()) if any([
-                        y in x for y in [
-                            'positive', 'negative', 'sample', 'sampling',
-                            'cache'
-                        ]
-                    ])
-                ]
                 args_sensitive_dict = {
                     key: args.__dict__[key]
-                    for key in args_sensitive_keys
+                    for key in ['strict_negative', 'negative_sampling_ratio']
                 }
                 task_sensitive_dict = {
                     key: task[key]
@@ -57,13 +49,12 @@ class Sampler:
         if args.strict_negative:
             positive_set = set(map(tuple, df_positive.values))
 
-        if args.positive_sampling:
-            df_positive = df_positive.sample(frac=1)
-            df_positive_first_based = df_positive.drop_duplicates(columns[0])
-            df_positive_second_based = df_positive.drop_duplicates(columns[1])
-            df_positive = pd.concat(
-                [df_positive_first_based,
-                 df_positive_second_based]).drop_duplicates()
+        df_positive = df_positive.sample(frac=1)
+        df_positive_first_based = df_positive.drop_duplicates(columns[0])
+        df_positive_second_based = df_positive.drop_duplicates(columns[1])
+        df_positive = pd.concat(
+            [df_positive_first_based,
+             df_positive_second_based]).drop_duplicates()
 
         df_positive['value'] = 1
 

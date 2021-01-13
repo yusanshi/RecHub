@@ -30,10 +30,15 @@ class HeterogeneousNetwork(nn.Module):
         if 'GCN' in args.model_name:
             self.aggregator = GCN(args.graph_embedding_dims)
         elif 'GAT' in args.model_name:
-            self.aggregator = GAT(
-                args.non_graph_embedding_dim,
-                args.non_graph_embedding_dim // args.num_attention_heads,
-                args.non_graph_embedding_dim, args.num_attention_heads)
+            if 'avg' in args.model_name:
+                heads_aggregating_method = 'avg'
+            elif 'cat' in args.model_name:
+                heads_aggregating_method = 'cat'
+            else:
+                raise NotImplementedError
+            self.aggregator = GAT(args.graph_embedding_dims,
+                                  args.num_attention_heads,
+                                  heads_aggregating_method)
         elif 'NGCF' in args.model_name:
             self.aggregator = NGCF(args.graph_embedding_dims)
         else:
@@ -57,18 +62,21 @@ class HeterogeneousNetwork(nn.Module):
         if args.model_name in ['HET-GraphRec']:
             self.predictor = DNNPredictor()
         elif args.model_name in [
-                'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF'
+                'GCN', 'GAT-avg', 'GAT-cat', 'NGCF', 'HET-GCN', 'HET-GAT',
+                'HET-NGCF'
         ]:
             self.predictor = DotPredictor()
         else:
             raise NotImplementedError
 
-    def aggregate_embeddings(self):
+    def aggregate_embeddings(self, excluded_dataframes=None):
         # TODO sample! accept some node indexs as parameters and only update related embeddings
         computed = {}
         for canonical_edge_type in self.graph.canonical_etypes:
             subgraph = dgl.edge_type_subgraph(self.graph,
                                               [canonical_edge_type])
+            if excluded_dataframes is not None:
+                pass  # TODO exclude positive edges from dataframes to avoid data leak
             ntypes = subgraph.ntypes
             if len(ntypes) == 1:
                 # src == dest

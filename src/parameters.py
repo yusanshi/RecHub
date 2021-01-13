@@ -25,17 +25,12 @@ def parse_args():
                         default=[200, 128, 1])
     parser.add_argument('--num_epochs_validate', type=int, default=10)
     parser.add_argument('--early_stop_patience', type=int, default=20)
-    parser.add_argument('--num_attention_heads', type=int, default=10)
+    parser.add_argument('--num_attention_heads', type=int, default=8)
     parser.add_argument('--save_checkpoint', type=str2bool, default=True)
-    parser.add_argument('--num_workers', default=None)  # None: os.cpu_count()
 
     # sampling in training
     parser.add_argument('--strict_negative', type=str2bool, default=True)
     parser.add_argument('--negative_sampling_ratio', type=int, default=4)
-    parser.add_argument('--positive_sampling',
-                        type=str2bool,
-                        default=True,
-                        help='whether to sample from multiple')
     parser.add_argument('--sample_cache',
                         type=str2bool,
                         default=True,
@@ -52,12 +47,14 @@ def parse_args():
 
             # Graph with single type of edge (we think it as homogeneous graph)
             'GCN',
-            'GAT',
+            'GAT-avg',
+            'GAT-cat',
             'NGCF',
 
             # Graph with multiple types of edge (we think it as heterogeneous graph)
             'HET-GCN',
-            'HET-GAT',
+            'HET-GAT-avg',
+            'HET-GAT-cat',
             'HET-NGCF',
             'HET-GraphRec',
 
@@ -75,5 +72,3 @@ def parse_args():
 
     args = parser.parse_args()
     return args
-
-    # TODO: graph model aggregators: parameters for layers numbers

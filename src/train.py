@@ -14,6 +14,7 @@ import math
 from sampler import Sampler
 import functools
 import operator
+from itertools import chain
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
@@ -22,6 +23,17 @@ args = parse_args()
 def train():
     with open(f'metadata/{args.dataset}.json') as f:
         metadata = json.load(f)
+
+    assert set([node['name'] for node in metadata['graph']['node']]) == set(
+        chain.from_iterable([
+            [edge['scheme'][0], edge['scheme'][2]]
+            for edge in metadata['graph']['edge']
+        ])), 'Node type differs between node metadata and edge metadata'
+
+    assert set([task['filename'] for task in metadata['task']]) <= set([
+        edge['filename'] for edge in metadata['graph']['edge']
+    ]), 'There are files in task metadata but not in graph edge metadata'
+
     model = create_model(metadata, logger).to(device)
     logger.info(model)
 
@@ -80,13 +92,9 @@ def train():
         os.makedirs(f'./checkpoint/{args.model_name}-{args.dataset}',
                     exist_ok=True)
 
-    if not args.positive_sampling and not args.sample_cache:
+    if args.sample_cache:
         logger.warning(
-            'Positive sampling is disabled, for which it will cost much time to do negative sampling. Consider enable sample cache to speedup training'
-        )
-    if args.positive_sampling and args.sample_cache:
-        logger.warning(
-            'Positive sampling and sample cache are enabled. To fully use the data, you should set `num_sample_cache` to a relatively larger value'
+            'Sample cache enabled. To fully use the data, you should set `num_sample_cache` to a relatively larger value'
         )
 
     pbar = enlighten.get_manager().counter(total=args.num_epochs,
@@ -94,12 +102,16 @@ def train():
                                            unit='epochs')
     for epoch in pbar(range(1, args.num_epochs + 1)):
         losses = {task['name']: 0 for task in metadata['task']}
+        dataframes = {
+            task['name']: samplers[task['name']].sample(epoch)
+            for task in metadata['task']
+        }
 
         if is_graph_model():
-            model.aggregate_embeddings()
+            model.aggregate_embeddings(dataframes)
 
         for task in metadata['task']:
-            df = samplers[task['name']].sample(epoch)
+            df = dataframes[task['name']]
             columns = df.columns.tolist()
             df = df.sort_values(columns[0])  # TODO shuffle?
             train_data = np.transpose(df.values)
