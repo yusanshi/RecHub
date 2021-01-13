@@ -34,10 +34,6 @@ class Sampler:
             raise NotImplementedError
 
     def sample(self, epoch):
-        global _positive_map
-        global _candidate_length
-        global _columns
-
         if args.sample_cache:
             cache_file_path = os.path.join(
                 self.sample_cache_dir,
@@ -71,8 +67,18 @@ class Sampler:
 
         first_indexs = np.repeat(df_positive[columns[0]].values,
                                  args.negative_sampling_ratio)
-        second_indexs = np.random.randint(candidate_length,
-                                          size=len(first_indexs))
+
+        if args.strict_negative:
+            # not use np.random.choice for performance issue
+            second_indexs = np.concatenate([
+                random.sample(range(candidate_length),
+                              args.negative_sampling_ratio)
+                for _ in range(len(df_positive))
+            ],
+                                           axis=0)
+        else:
+            second_indexs = np.random.randint(candidate_length,
+                                              size=len(first_indexs))
 
         if args.strict_negative:
             negative_set = set(zip(first_indexs, second_indexs))
