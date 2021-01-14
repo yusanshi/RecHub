@@ -111,7 +111,7 @@ if __name__ == '__main__':
     logger = create_logger()
     logger.info(args)
     import json
-    with open(f'metadata/{args.dataset}.json') as f:
+    with open(args.metadata_path) as f:
         metadata = json.load(f)
     samplers = {}
     for task in metadata['task']:

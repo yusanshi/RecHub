@@ -8,7 +8,7 @@ args = parse_args()
 
 
 def test():
-    with open(f'metadata/{args.dataset}.json') as f:
+    with open(args.metadata_path) as f:
         metadata = json.load(f)
     model = create_model(metadata, logger).to(device)
     checkpoint_path = latest_checkpoint(

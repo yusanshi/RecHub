@@ -21,7 +21,7 @@ args = parse_args()
 
 
 def train():
-    with open(f'metadata/{args.dataset}.json') as f:
+    with open(args.metadata_path) as f:
         metadata = json.load(f)
 
     assert set([node['name'] for node in metadata['graph']['node']]) == set(

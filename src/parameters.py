@@ -67,6 +67,13 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='jd', choices=[
         'jd',
     ])
-
+    parser.add_argument('--metadata_path', type=str)
     args = parser.parse_args()
+    if args.metadata_path is None:
+        args.metadata_path = f'metadata/{args.dataset}.json'
     return args
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    print(args)
