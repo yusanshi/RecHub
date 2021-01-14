@@ -138,7 +138,8 @@ def train():
                 writer.add_scalar(f"Train/Loss/{task['name']}",
                                   losses[task['name']].item(), epoch)
         loss = functools.reduce(operator.add, [
-            losses[task['name']] * task['weight'] for task in metadata['task']
+            losses[task['name']] * task['weight']['loss']
+            for task in metadata['task']
         ])
         optimizer.zero_grad()
         loss.backward()

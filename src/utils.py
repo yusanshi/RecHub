@@ -108,8 +108,8 @@ def evaluate(model, tasks, mode):
             raise NotImplementedError
 
     overall = np.average([
-        np.average(list(metrics[task['name']].values())) * task['weight']
-        for task in tasks
+        np.average(list(metrics[task['name']].values())) *
+        task['weight']['metric'] for task in tasks
     ])
     return metrics, overall
 
