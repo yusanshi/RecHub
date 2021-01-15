@@ -16,17 +16,14 @@
     ],
     "edge": [
       {
-        "scheme": ["user", "purchase", "item"],
         "filename": "user-item-purchase.tsv",
         "weighted": false
       },
       {
-        "scheme": ["user", "follow", "anchor"],
         "filename": "user-anchor-follow.tsv",
         "weighted": false
       },
       {
-        "scheme": ["anchor", "sell", "item"],
         "filename": "anchor-item-sell.tsv",
         "weighted": false
       }
@@ -38,7 +35,7 @@
       "filename": "user-item-purchase.tsv",
       "type": "top-k-recommendation",
       "loss": "log",
-      "weight": { "loss": 3, "metric": 1 }
+      "weight": { "loss": 1, "metric": 1 }
     },
     {
       "name": "User follow anchor",
