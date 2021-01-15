@@ -36,7 +36,7 @@ class NCF(nn.Module):
                                       1,
                                       bias=False)
 
-    def forward(self, first, second):
+    def forward(self, first, second, _):
         '''
         Args:
             first: {

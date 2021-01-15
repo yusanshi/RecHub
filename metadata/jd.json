@@ -12,7 +12,6 @@
     ],
     "edge": [
       {
-        "scheme": ["user", "purchase", "item"],
         "filename": "user-item-purchase.tsv",
         "weighted": false
       }

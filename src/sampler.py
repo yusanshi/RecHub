@@ -107,12 +107,13 @@ class Sampler:
 
 
 if __name__ == '__main__':
-    from utils import create_logger
+    from utils import create_logger, add_scheme
     logger = create_logger()
     logger.info(args)
     import json
     with open(args.metadata_path) as f:
         metadata = json.load(f)
+        metadata = add_scheme(metadata)
     samplers = {}
     for task in metadata['task']:
         samplers[task['name']] = Sampler(task, logger)

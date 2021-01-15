@@ -1,6 +1,6 @@
 import torch
 import json
-from utils import evaluate, latest_checkpoint, create_model, create_logger
+from utils import evaluate, latest_checkpoint, create_model, create_logger, add_scheme
 from parameters import parse_args
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -10,6 +10,7 @@ args = parse_args()
 def test():
     with open(args.metadata_path) as f:
         metadata = json.load(f)
+        metadata = add_scheme(metadata)
     model = create_model(metadata, logger).to(device)
     checkpoint_path = latest_checkpoint(
         f'./checkpoint/{args.model_name}-{args.dataset}')

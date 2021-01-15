@@ -19,14 +19,21 @@ def parse_args():
                         default=[200, 128, 96, 64])
     parser.add_argument('--single_attribute_dim', type=int, default=40)
     parser.add_argument('--attention_query_vector_dim', type=int, default=200)
-    parser.add_argument('--dnn_predictor_dims',
-                        type=int,
-                        nargs='+',
-                        default=[200, 128, 1])
+    parser.add_argument(
+        '--dnn_predictor_dims',
+        type=int,
+        nargs='+',
+        default=[0, 128, 1],
+        help=
+        'You can set first dim as 0 to make it automatically fit the input vector'
+    )
     parser.add_argument('--num_epochs_validate', type=int, default=10)
     parser.add_argument('--early_stop_patience', type=int, default=20)
     parser.add_argument('--num_attention_heads', type=int, default=8)
     parser.add_argument('--save_checkpoint', type=str2bool, default=True)
+    parser.add_argument('--HET_different_embeddings',
+                        type=str2bool,
+                        default=True)
 
     # sampling in training
     parser.add_argument('--strict_negative', type=str2bool, default=True)
@@ -67,6 +74,10 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='jd', choices=[
         'jd',
     ])
+    # parser.add_argument('--predictor',
+    #                     type=str,
+    #                     default='dot',
+    #                     choices=['dot', 'dnn'])
     parser.add_argument('--metadata_path', type=str)
     args = parser.parse_args()
     if args.metadata_path is None:

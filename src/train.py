@@ -6,7 +6,7 @@ import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss, add_scheme
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
@@ -23,6 +23,7 @@ args = parse_args()
 def train():
     with open(args.metadata_path) as f:
         metadata = json.load(f)
+        metadata = add_scheme(metadata)
 
     assert set([node['name'] for node in metadata['graph']['node']]) == set(
         chain.from_iterable([
@@ -126,7 +127,7 @@ def train():
                                              args.batch_size]
                 first = {'name': columns[0], 'index': first_index}
                 second = {'name': columns[1], 'index': second_index}
-                y_pred = model(first, second)
+                y_pred = model(first, second, task['name'])
                 y_true = y_trues[i * args.batch_size:(i + 1) * args.batch_size]
                 losses[task['name']] += criterions[task['name']](y_pred,
                                                                  y_true)

@@ -71,7 +71,7 @@ def evaluate(model, tasks, mode):
                                          (8 * args.batch_size)]
             first = {'name': columns[0], 'index': first_index}
             second = {'name': columns[1], 'index': second_index}
-            y_pred = model(first, second)
+            y_pred = model(first, second, task['name'])
             y_pred = y_pred.cpu().numpy()
             y_preds.append(y_pred)
 
@@ -172,8 +172,8 @@ def create_model(metadata, logger):
         for edge in metadata['graph']['edge']:
             df = pd.read_table(
                 f"./data/{args.dataset}/train/{edge['filename']}")
-            graph_data[tuple(edge['scheme'])] = (torch.tensor(
-                df.iloc[:, 0].values), torch.tensor(df.iloc[:, 1].values))
+            graph_data[edge['scheme']] = (torch.tensor(df.iloc[:, 0].values),
+                                          torch.tensor(df.iloc[:, 1].values))
 
         graph = dgl.heterograph(graph_data, num_nodes_dict)
         for edge in metadata['graph']['edge']:
@@ -181,7 +181,7 @@ def create_model(metadata, logger):
                 raise NotImplementedError
 
         graph = graph.to(device)
-        model = HeterogeneousNetwork(args, graph)
+        model = HeterogeneousNetwork(args, graph, metadata['task'])
         return model
 
     if args.model_name == 'NCF':
@@ -231,3 +231,17 @@ class BPRLoss(nn.Module):
 
     def forward(self, input, target):
         pass
+
+
+def add_scheme(metadata):
+    def parse_scheme_from_filename(filename):
+        filename = filename.split('.')[0].split('-')
+        assert len(filename) == 3
+        return tuple(filename[x] for x in [0, 2, 1])
+
+    for edge in metadata['graph']['edge']:
+        edge['scheme'] = parse_scheme_from_filename(edge['filename'])
+    for task in metadata['task']:
+        task['scheme'] = parse_scheme_from_filename(task['filename'])
+
+    return metadata

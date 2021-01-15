@@ -15,18 +15,24 @@ class HeterogeneousNetwork(nn.Module):
     '''
     A general module for all graph-based models.
     '''
-    def __init__(self, args, graph):
+    def __init__(self, args, graph, tasks):
         super(HeterogeneousNetwork, self).__init__()
         self.args = args
         self.graph = graph
         if args.model_name == 'GraphRec':
-            pass
+            pass  # TODO
         else:
             self.embedding = nn.ModuleDict({
-                node_name: nn.Embedding(graph.num_nodes(node_name),
-                                        args.graph_embedding_dims[0])
+                node_name: nn.ModuleDict({
+                    str(canonical_edge_type): nn.Embedding(
+                        graph.num_nodes(node_name),
+                        args.graph_embedding_dims[0])
+                    for canonical_edge_type in graph.canonical_etypes
+                }) if args.HET_different_embeddings else nn.Embedding(
+                    graph.num_nodes(node_name), args.graph_embedding_dims[0])
                 for node_name in graph.ntypes
             })
+
         if 'GCN' in args.model_name:
             self.aggregator = GCN(args.graph_embedding_dims)
         elif 'GAT' in args.model_name:
@@ -37,30 +43,35 @@ class HeterogeneousNetwork(nn.Module):
         else:
             raise NotImplementedError
 
-        self.final_embedding_dim = self.args.graph_embedding_dims[-1] * (
-            self.args.num_attention_heads
-            if 'GAT' in self.args.model_name else 1)
+        self.aggregated_embeddings = None
 
-        if 'HET' in args.model_name:
-            self.mask = {
-                node_name: torch.tensor([
+        if args.model_name in [
+                'HET-GCN', 'HET-GAT', 'HET-NGCF', 'HET-GraphRec'
+        ]:  # TODO better if contidion
+            embedding_num_dict = {
+                node_name: sum([
                     node_name
                     in [canonical_edge_type[0], canonical_edge_type[2]]
                     for canonical_edge_type in graph.canonical_etypes
                 ])
                 for node_name in graph.ntypes
             }
+            final_single_embedding_dim = self.args.graph_embedding_dims[-1] * (
+                self.args.num_attention_heads
+                if 'GAT' in self.args.model_name else 1)
 
-            self.additive_attention = AdditiveAttention(
-                args.attention_query_vector_dim, self.final_embedding_dim)
-
-        self.aggregated_embeddings = None
-
-        if args.model_name in ['HET-GraphRec']:
-            self.predictor = DNNPredictor()
-        elif args.model_name in [
-                'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF'
-        ]:
+            self.predictor = nn.ModuleDict({
+                task['name']: DNNPredictor(
+                    args.dnn_predictor_dims
+                    if args.dnn_predictor_dims[0] != 0 else [
+                        final_single_embedding_dim *
+                        sum(embedding_num_dict[j]
+                            for j in [task['scheme'][i] for i in [0, 2]]),
+                        *args.dnn_predictor_dims[1:]
+                    ])
+                for task in tasks
+            })
+        elif args.model_name in ['GCN', 'GAT', 'NGCF']:
             self.predictor = DotPredictor()
         else:
             raise NotImplementedError
@@ -75,11 +86,12 @@ class HeterogeneousNetwork(nn.Module):
                 pass  # TODO exclude positive edges from dataframes to avoid data leak
             ntypes = subgraph.ntypes
             if len(ntypes) == 1:
+                raise NotImplementedError
                 # src == dest
-                subgraph = dgl.to_bidirected(subgraph.cpu()).to(device)
-                embeddings = self.aggregator(subgraph,
-                                             self.embedding[ntypes[0]].weight)
-                computed[(ntypes[0], canonical_edge_type)] = embeddings
+                # subgraph = dgl.to_bidirected(subgraph.cpu()).to(device)
+                # embeddings = self.aggregator(subgraph,
+                #                              self.embedding[ntypes[0]].weight)
+                # computed[(ntypes[0], canonical_edge_type)] = embeddings
             else:
                 # src != dest
                 subgraph = dgl.to_bidirected(
@@ -87,49 +99,31 @@ class HeterogeneousNetwork(nn.Module):
                 ).to(device)  # TODO test performance without `to_bidirected`
                 embeddings = self.aggregator(
                     subgraph,
-                    torch.cat((
-                        self.embedding[ntypes[0]].weight,
-                        self.embedding[ntypes[1]].weight,
-                    ),
-                              dim=0))
+                    torch.cat(
+                        ((self.embedding[ntypes[0]][str(canonical_edge_type)]
+                          if self.args.HET_different_embeddings else
+                          self.embedding[ntypes[0]]).weight,
+                         (self.embedding[ntypes[1]][str(canonical_edge_type)]
+                          if self.args.HET_different_embeddings else
+                          self.embedding[ntypes[1]]).weight),
+                        dim=0))
                 computed[(ntypes[0], canonical_edge_type
                           )] = embeddings[:self.graph.num_nodes(ntypes[0])]
                 computed[(ntypes[1], canonical_edge_type
                           )] = embeddings[self.graph.num_nodes(ntypes[0]):]
 
-        # Don't need to aggregated multiple embedding for a node
-        # if only single type of edge exists
-        if 'HET' not in self.args.model_name:
-            assert len(self.graph.canonical_etypes) == 1
-            self.aggregated_embeddings = {
-                node_name:
-                computed[(node_name, self.graph.canonical_etypes[0])]
-                for node_name in self.graph.ntypes
-            }
-            return
-
         # Else aggregated them
-        temp_embeddings = {
-            node_name: {
-                canonical_edge_type:
-                computed[(node_name, canonical_edge_type)] if
-                (node_name, canonical_edge_type) in computed else torch.zeros(
-                    self.graph.num_nodes(node_name),
-                    self.final_embedding_dim).to(device)
-                for canonical_edge_type in self.graph.canonical_etypes
-            }
-            for node_name in self.graph.ntypes
-        }
-
         self.aggregated_embeddings = {
-            node_name: self.additive_attention(
-                torch.stack(list(temp_embeddings[node_name].values()), dim=1),
-                self.mask[node_name].expand(self.graph.num_nodes(node_name),
-                                            -1))
+            node_name: torch.cat([
+                computed[(node_name, canonical_edge_type)]
+                for canonical_edge_type in self.graph.canonical_etypes
+                if (node_name, canonical_edge_type) in computed
+            ],
+                                 dim=-1)
             for node_name in self.graph.ntypes
         }
 
-    def forward(self, first, second):
+    def forward(self, first, second, task_name):
         '''
         Args:
             first: {
@@ -144,7 +138,11 @@ class HeterogeneousNetwork(nn.Module):
         if self.aggregated_embeddings is None:
             self.aggregate_embeddings()
 
-        return self.predictor(
+        if isinstance(self.predictor, nn.ModuleDict):
+            predictor = self.predictor[task_name]
+        else:
+            predictor = self.predictor
+        return predictor(
             self.aggregated_embeddings[first['name']][first['index']],
             self.aggregated_embeddings[second['name']][second['index']])
 
