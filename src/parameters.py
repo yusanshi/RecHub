@@ -30,10 +30,8 @@ def parse_args():
     parser.add_argument('--num_epochs_validate', type=int, default=10)
     parser.add_argument('--early_stop_patience', type=int, default=20)
     parser.add_argument('--num_attention_heads', type=int, default=8)
-    parser.add_argument('--save_checkpoint', type=str2bool, default=True)
-    parser.add_argument('--HET_different_embeddings',
-                        type=str2bool,
-                        default=True)
+    parser.add_argument('--save_checkpoint', type=str2bool, default=False)
+    parser.add_argument('--different_embeddings', type=str2bool, default=True)
 
     # sampling in training
     parser.add_argument('--strict_negative', type=str2bool, default=True)
@@ -71,9 +69,13 @@ def parse_args():
             'DiffNet++',
             'DANSER'
         ])
-    parser.add_argument('--dataset', type=str, default='jd', choices=[
-        'jd',
-    ])
+    parser.add_argument('--dataset',
+                        type=str,
+                        default='jd-small',
+                        choices=[
+                            'jd-small',
+                            'jd-large',
+                        ])
     parser.add_argument('--embedding_aggregator',
                         type=str,
                         default='concat',

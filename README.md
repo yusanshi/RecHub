@@ -219,3 +219,11 @@ PYTHONPATH=./src:$PYTHONPATH python src/model/NCF.py
 2. Wired performance at the beginning of training (e.g., GCN). Need a better weight initialization?
 3. Support node attributes.
 4. Support multiple tasks (e.g., `interaction-attribute-regression`).
+
+### Tricks
+
+- Use this to automatically select the GPU with most free memory.
+
+  ```
+  alias python='CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader | nl -v 0 | sort -nrk 2 | cut -f 1 | head -n 1 | xargs) python'
+  ```

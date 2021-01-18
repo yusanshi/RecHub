@@ -31,7 +31,7 @@ class HeterogeneousNetwork(nn.Module):
                     for canonical_edge_type in graph.canonical_etypes
                     if node_name in
                     [canonical_edge_type[0], canonical_edge_type[2]]
-                }) if args.HET_different_embeddings else nn.Embedding(
+                }) if args.different_embeddings else nn.Embedding(
                     graph.num_nodes(node_name), args.graph_embedding_dims[0])
                 for node_name in graph.ntypes
             })
@@ -133,10 +133,10 @@ class HeterogeneousNetwork(nn.Module):
                     subgraph,
                     torch.cat(
                         ((self.embedding[ntypes[0]][str(canonical_edge_type)]
-                          if self.args.HET_different_embeddings else
+                          if self.args.different_embeddings else
                           self.embedding[ntypes[0]]).weight,
                          (self.embedding[ntypes[1]][str(canonical_edge_type)]
-                          if self.args.HET_different_embeddings else
+                          if self.args.different_embeddings else
                           self.embedding[ntypes[1]]).weight),
                         dim=0))
                 computed[(ntypes[0], canonical_edge_type
