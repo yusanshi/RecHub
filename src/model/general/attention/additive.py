@@ -16,7 +16,7 @@ class AdditiveAttention(nn.Module):
         self.attention_query_vector = nn.Parameter(
             torch.empty(attention_query_vector_dim).uniform_(-0.1, 0.1))
 
-    def forward(self, candidate_vector, mask):
+    def forward(self, candidate_vector, mask=None):
         """
         Args:
             candidate_vector: batch_size, candidate_size, candidate_vector_dim
@@ -28,7 +28,8 @@ class AdditiveAttention(nn.Module):
         temp = torch.tanh(self.linear(candidate_vector))
         # batch_size, candidate_size
         weights = torch.matmul(temp, self.attention_query_vector)
-        weights[~mask] = float('-inf')
+        if mask is not None:
+            weights[~mask] = float('-inf')
         weights = F.softmax(weights, dim=1)
         # batch_size, candidate_vector_dim
         target = torch.bmm(weights.unsqueeze(dim=1),

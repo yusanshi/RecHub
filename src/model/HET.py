@@ -7,6 +7,7 @@ from model.GAT import GAT
 from model.NGCF import NGCF
 from model.general.predictor.dnn import DNNPredictor
 from model.general.predictor.dot import DotPredictor
+from model.general.predictor.Wdot import WDotPredictor
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -28,6 +29,8 @@ class HeterogeneousNetwork(nn.Module):
                         graph.num_nodes(node_name),
                         args.graph_embedding_dims[0])
                     for canonical_edge_type in graph.canonical_etypes
+                    if node_name in
+                    [canonical_edge_type[0], canonical_edge_type[2]]
                 }) if args.HET_different_embeddings else nn.Embedding(
                     graph.num_nodes(node_name), args.graph_embedding_dims[0])
                 for node_name in graph.ntypes
@@ -45,9 +48,11 @@ class HeterogeneousNetwork(nn.Module):
 
         self.aggregated_embeddings = None
 
-        if args.model_name in [
-                'HET-GCN', 'HET-GAT', 'HET-NGCF', 'HET-GraphRec'
-        ]:  # TODO better if contidion
+        final_single_embedding_dim = self.args.graph_embedding_dims[-1] * (
+            self.args.num_attention_heads
+            if 'GAT' in self.args.model_name else 1)
+
+        if args.embedding_aggregator == 'concat':
             embedding_num_dict = {
                 node_name: sum([
                     node_name
@@ -56,23 +61,50 @@ class HeterogeneousNetwork(nn.Module):
                 ])
                 for node_name in graph.ntypes
             }
-            final_single_embedding_dim = self.args.graph_embedding_dims[-1] * (
-                self.args.num_attention_heads
-                if 'GAT' in self.args.model_name else 1)
+            final_embedding_dim_dict = {
+                task['name']: (final_single_embedding_dim *
+                               embedding_num_dict[task['scheme'][0]],
+                               final_single_embedding_dim *
+                               embedding_num_dict[task['scheme'][2]])
+                for task in tasks
+            }
+        elif args.embedding_aggregator == 'attn':
+            final_embedding_dim_dict = {
+                task['name']:
+                (final_single_embedding_dim, final_single_embedding_dim)
+                for task in tasks
+            }
+            self.additive_attention = AdditiveAttention(
+                args.attention_query_vector_dim, final_single_embedding_dim)
+        else:
+            raise NotImplementedError
 
+        if args.predictor == 'dot':
+            self.predictor = DotPredictor()
+        elif args.predictor == 'Wdot':
             self.predictor = nn.ModuleDict({
-                task['name']: DNNPredictor(
-                    args.dnn_predictor_dims
-                    if args.dnn_predictor_dims[0] != 0 else [
-                        final_single_embedding_dim *
-                        sum(embedding_num_dict[j]
-                            for j in [task['scheme'][i] for i in [0, 2]]),
-                        *args.dnn_predictor_dims[1:]
-                    ])
+                task['name']:
+                WDotPredictor(final_embedding_dim_dict[task['name']][0],
+                              final_embedding_dim_dict[task['name']][0])
                 for task in tasks
             })
-        elif args.model_name in ['GCN', 'GAT', 'NGCF']:
-            self.predictor = DotPredictor()
+        elif args.predictor == 'Wsdot':
+            self.predictor = nn.ModuleDict({
+                task['name']:
+                WDotPredictor(final_embedding_dim_dict[task['name']],
+                              min(final_embedding_dim_dict[task['name']]))
+                for task in tasks
+            })
+        elif args.predictor == 'dnn':
+            self.predictor = nn.ModuleDict({
+                task['name']:
+                DNNPredictor(args.dnn_predictor_dims
+                             if args.dnn_predictor_dims[0] != 0 else [
+                                 sum(final_embedding_dim_dict[task['name']]
+                                     ), *args.dnn_predictor_dims[1:]
+                             ])
+                for task in tasks
+            })
         else:
             raise NotImplementedError
 
@@ -113,13 +145,21 @@ class HeterogeneousNetwork(nn.Module):
                           )] = embeddings[self.graph.num_nodes(ntypes[0]):]
 
         # Else aggregated them
+        if self.args.embedding_aggregator == 'concat':
+
+            def embedding_aggregator(x):
+                return torch.cat(x, dim=-1)
+        elif self.args.embedding_aggregator == 'attn':
+
+            def embedding_aggregator(x):
+                return self.additive_attention(torch.stack(x, dim=1))
+
         self.aggregated_embeddings = {
-            node_name: torch.cat([
+            node_name: embedding_aggregator([
                 computed[(node_name, canonical_edge_type)]
                 for canonical_edge_type in self.graph.canonical_etypes
                 if (node_name, canonical_edge_type) in computed
-            ],
-                                 dim=-1)
+            ])
             for node_name in self.graph.ntypes
         }
 

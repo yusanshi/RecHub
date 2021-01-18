@@ -74,10 +74,14 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='jd', choices=[
         'jd',
     ])
-    # parser.add_argument('--predictor',
-    #                     type=str,
-    #                     default='dot',
-    #                     choices=['dot', 'dnn'])
+    parser.add_argument('--embedding_aggregator',
+                        type=str,
+                        default='concat',
+                        choices=['concat', 'attn'])
+    parser.add_argument('--predictor',
+                        type=str,
+                        default='dnn',
+                        choices=['dot', 'Wdot', 'Wsdot', 'dnn'])
     parser.add_argument('--metadata_path', type=str)
     args = parser.parse_args()
     if args.metadata_path is None:
