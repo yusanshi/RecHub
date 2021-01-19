@@ -6,7 +6,7 @@ import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss, add_scheme
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss, add_scheme, dict2table
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
@@ -174,11 +174,15 @@ def train():
                     }, f"./checkpoint/{args.model_name}-{args.dataset}/ckpt-{epoch}.pt"
                                )
 
-    logger.info(f'Best metrics on validation set {best_val_metrics}')
+    logger.info(
+        f"Best metrics on validation set\n{dict2table(best_val_metrics, v_fn=lambda x: f'{x:.4f}')}"
+    )
     model.load_state_dict(best_checkpoint)
     model.eval()
     metrics, _ = evaluate(model, metadata['task'], 'test')
-    logger.info(f'Metrics on test set {metrics}')
+    logger.info(
+        f"Metrics on test set\n{dict2table(metrics, v_fn=lambda x: f'{x:.4f}')}"
+    )
 
 
 if __name__ == '__main__':

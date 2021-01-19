@@ -1,6 +1,6 @@
 import torch
 import json
-from utils import evaluate, latest_checkpoint, create_model, create_logger, add_scheme
+from utils import evaluate, latest_checkpoint, create_model, create_logger, add_scheme, dict2table
 from parameters import parse_args
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -22,7 +22,9 @@ def test():
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     metrics, _ = evaluate(model, metadata['task'], 'test')
-    logger.info(metrics)
+    logger.info(
+        f"Metrics on test set\n{dict2table(metrics, v_fn=lambda x: f'{x:.4f}')}"
+    )
 
 
 if __name__ == '__main__':

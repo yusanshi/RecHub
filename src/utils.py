@@ -245,3 +245,32 @@ def add_scheme(metadata):
         task['scheme'] = parse_scheme_from_filename(task['filename'])
 
     return metadata
+
+
+def dict2table(d, k_fn=str, v_fn=str):
+    '''
+    Convert a nested dict to markdown table
+    Tips: use `v_fn = lambda x: f'{x:.4f}'` to format a float number
+    '''
+    def parse_header(d, depth=0):
+        if isinstance(list(d.values())[0], dict):
+            header = parse_header(list(d.values())[0], depth=depth + 1)
+            for v in d.values():
+                assert header == parse_header(v, depth=depth + 1)
+            return header
+        else:
+            return f"| {' | '.join([''] * depth + list(map(k_fn, d.keys())))} |"
+
+    def parse_content(d, accumulated_keys=[]):
+        if isinstance(list(d.values())[0], dict):
+            contents = []
+            for k, v in d.items():
+                contents.extend(parse_content(v, accumulated_keys + [k_fn(k)]))
+            return contents
+        else:
+            return [
+                f"| {' | '.join(accumulated_keys + list(map(v_fn, d.values())))} |"
+            ]
+
+    lines = [parse_header(d), *parse_content(d)]
+    return '\n'.join(lines)
