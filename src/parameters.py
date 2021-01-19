@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument('--predictor',
                         type=str,
                         default='dnn',
-                        choices=['dot', 'Wdot', 'Wsdot', 'dnn'])
+                        choices=['dot', 'Wdot', 'dnn'])
     parser.add_argument('--metadata_path', type=str)
     args = parser.parse_args()
     if args.metadata_path is None:

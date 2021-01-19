@@ -82,13 +82,7 @@ class HeterogeneousNetwork(nn.Module):
         if args.predictor == 'dot':
             self.predictor = DotPredictor()
         elif args.predictor == 'Wdot':
-            self.predictor = nn.ModuleDict({
-                task['name']:
-                WDotPredictor(final_embedding_dim_dict[task['name']][0],
-                              final_embedding_dim_dict[task['name']][0])
-                for task in tasks
-            })
-        elif args.predictor == 'Wsdot':
+            # TODO what if two nodes belong to the same type
             self.predictor = nn.ModuleDict({
                 task['name']:
                 WDotPredictor(final_embedding_dim_dict[task['name']],
