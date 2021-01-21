@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import dgl
 import numpy as np
+import pandas as pd
 import json
 import os
 import time
@@ -99,13 +100,6 @@ def train():
     batch_pbar = enlighten_manager.counter(desc='Training batches',
                                            unit='batches')
 
-    import pandas as pd
-    num_nodes_dict = {
-        node['name']:
-        len(pd.read_table(f"./data/{args.dataset}/train/{node['name']}.tsv"))
-        for node in metadata['graph']['node']
-    }  # TODO
-
     batch = 0
     for epoch in epoch_pbar(range(1, args.num_epochs + 1)):
         if is_graph_model():
@@ -114,9 +108,26 @@ def train():
                 args.graph_embedding_dims) - 1
             neighbor_sampler = dgl.dataloading.MultiLayerNeighborSampler(
                 args.num_neighbors_sampled)
+
+            # Two versions of edge_sampling, either is OK
+            def edge_sampling(etype):
+                df = pd.DataFrame(
+                    torch.stack(model.graph.edges(etype=etype), dim=1).numpy())
+                return df.sample(frac=1).drop_duplicates(0).index.values
+
+            # def edge_sampling(etype):
+            #     subgraph = dgl.edge_type_subgraph(model.graph, [etype])
+            #     return dgl.sampling.sample_neighbors(
+            #         subgraph, {
+            #             etype[0]: subgraph.nodes(etype[0])
+            #         },
+            #         1,
+            #         edge_dir='out').edata[dgl.EID]
+
             eid_dict = {
-                etype: model.graph.edges('eid', etype=etype)
-                for etype in model.graph.canonical_etypes
+                etype: edge_sampling(etype)
+                for etype in
+                model.primary_etypes  # TODO model.graph.canonical_etypes ?
             }
 
             # parse reverse_etypes
@@ -151,10 +162,10 @@ def train():
             for input_nodes, positive_graph, negative_graph, blocks in batch_pbar(
                     dataloader):
                 batch += 1
-                if batch_pbar.count == 0:
+                if batch == 1:
                     node_coverage = {
-                        k: len(input_nodes[k]) / v
-                        for k, v in num_nodes_dict.items()
+                        k: len(v) / model.graph.num_nodes(k)
+                        for k, v in input_nodes.items()
                     }
                     logger.debug(f'Node coverage {deep_apply(node_coverage)}')
                 input_nodes = {k: v.to(device) for k, v in input_nodes.items()}
