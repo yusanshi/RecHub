@@ -13,6 +13,7 @@ import logging
 import coloredlogs
 import math
 import datetime
+import copy
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
@@ -283,6 +284,7 @@ def add_reverse(graph_data):
 
 
 def deep_apply(d, f=lambda x: f'{x:.4f}'):
+    d = copy.deepcopy(d)  # keep original content
     for k, v in d.items():
         if isinstance(v, dict):
             d[k] = deep_apply(v, f)

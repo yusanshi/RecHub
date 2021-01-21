@@ -264,7 +264,7 @@ def train():
                         }, f"./checkpoint/{args.model_name}-{args.dataset}/ckpt-{epoch}.pt"
                                    )
     except KeyboardInterrupt:
-        logger.info('Stop in advance')
+        logger.info('Stop in advance.')
 
     logger.info(
         f'Best metrics on validation set\n{dict2table(best_val_metrics)}')
