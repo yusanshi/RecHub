@@ -284,13 +284,16 @@ def add_reverse(graph_data):
 
 
 def deep_apply(d, f=lambda x: f'{x:.4f}'):
-    d = copy.deepcopy(d)  # keep original content
-    for k, v in d.items():
-        if isinstance(v, dict):
-            d[k] = deep_apply(v, f)
-        else:
-            d[k] = f(v)
-    return d
+    def _deep_apply(d, f):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                d[k] = _deep_apply(v, f)
+            else:
+                d[k] = f(v)
+        return d
+
+    # deepcopy to keep original content
+    return _deep_apply(copy.deepcopy(d), f)
 
 
 def dict2table(d, k_fn=str, v_fn=lambda x: f'{x:.4f}'):
