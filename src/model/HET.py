@@ -20,24 +20,28 @@ class HeterogeneousNetwork(nn.Module):
         super(HeterogeneousNetwork, self).__init__()
         self.args = args
         self.graph = graph
-        if args.model_name == 'GraphRec':
-            pass  # TODO
+        self.primary_etypes = [
+            x for x in graph.canonical_etypes if not x[1].endswith('-by')
+        ]
+        if args.different_embeddings:
+            self.embedding = nn.ModuleDict({
+                str(etype): nn.ModuleDict({
+                    node_name: nn.Embedding(graph.num_nodes(node_name),
+                                            args.graph_embedding_dims[0])
+                    for node_name in [etype[0], etype[2]]
+                })
+                for etype in self.primary_etypes
+            })
         else:
             self.embedding = nn.ModuleDict({
-                node_name: nn.ModuleDict({
-                    str(canonical_edge_type): nn.Embedding(
-                        graph.num_nodes(node_name),
-                        args.graph_embedding_dims[0])
-                    for canonical_edge_type in graph.canonical_etypes
-                    if node_name in
-                    [canonical_edge_type[0], canonical_edge_type[2]]
-                }) if args.different_embeddings else nn.Embedding(
-                    graph.num_nodes(node_name), args.graph_embedding_dims[0])
+                node_name: nn.Embedding(graph.num_nodes(node_name),
+                                        args.graph_embedding_dims[0])
                 for node_name in graph.ntypes
             })
 
         if 'GCN' in args.model_name:
-            self.aggregator = GCN(args.graph_embedding_dims)
+            self.aggregator = GCN(args.graph_embedding_dims,
+                                  graph.canonical_etypes)
         elif 'GAT' in args.model_name:
             self.aggregator = GAT(args.graph_embedding_dims,
                                   args.num_attention_heads)
@@ -46,8 +50,6 @@ class HeterogeneousNetwork(nn.Module):
         else:
             raise NotImplementedError
 
-        self.aggregated_embeddings = None
-
         final_single_embedding_dim = self.args.graph_embedding_dims[-1] * (
             self.args.num_attention_heads
             if 'GAT' in self.args.model_name else 1)
@@ -55,9 +57,8 @@ class HeterogeneousNetwork(nn.Module):
         if args.embedding_aggregator == 'concat':
             embedding_num_dict = {
                 node_name: sum([
-                    node_name
-                    in [canonical_edge_type[0], canonical_edge_type[2]]
-                    for canonical_edge_type in graph.canonical_etypes
+                    node_name in [etype[0], etype[2]]
+                    for etype in self.primary_etypes
                 ])
                 for node_name in graph.ntypes
             }
@@ -99,46 +100,38 @@ class HeterogeneousNetwork(nn.Module):
                              ])
                 for task in tasks
             })
+            # import ipdb
+            # ipdb.set_trace()
         else:
             raise NotImplementedError
 
-    def aggregate_embeddings(self, excluded_dataframes=None):
-        # TODO sample! accept some node indexs as parameters and only update related embeddings
-        computed = {}
-        for canonical_edge_type in self.graph.canonical_etypes:
-            subgraph = dgl.edge_type_subgraph(self.graph,
-                                              [canonical_edge_type])
-            if excluded_dataframes is not None:
-                pass  # TODO exclude positive edges from dataframes to avoid data leak
-            ntypes = subgraph.ntypes
-            if len(ntypes) == 1:
-                raise NotImplementedError
-                # src == dest
-                # subgraph = dgl.to_bidirected(subgraph.cpu()).to(device)
-                # embeddings = self.aggregator(subgraph,
-                #                              self.embedding[ntypes[0]].weight)
-                # computed[(ntypes[0], canonical_edge_type)] = embeddings
-            else:
-                # src != dest
-                subgraph = dgl.to_bidirected(
-                    dgl.to_homogeneous(subgraph).cpu()
-                ).to(device)  # TODO test performance without `to_bidirected`
-                embeddings = self.aggregator(
-                    subgraph,
-                    torch.cat(
-                        ((self.embedding[ntypes[0]][str(canonical_edge_type)]
-                          if self.args.different_embeddings else
-                          self.embedding[ntypes[0]]).weight,
-                         (self.embedding[ntypes[1]][str(canonical_edge_type)]
-                          if self.args.different_embeddings else
-                          self.embedding[ntypes[1]]).weight),
-                        dim=0))
-                computed[(ntypes[0], canonical_edge_type
-                          )] = embeddings[:self.graph.num_nodes(ntypes[0])]
-                computed[(ntypes[1], canonical_edge_type
-                          )] = embeddings[self.graph.num_nodes(ntypes[0]):]
+    def aggregate_embeddings(self, input_nodes, blocks):
+        if self.args.different_embeddings:
+            input_embeddings = {
+                etype: {
+                    node_name: self.embedding[str(etype)][node_name](
+                        input_nodes[node_name])
+                    for node_name in [etype[0], etype[2]]
+                }
+                for etype in self.primary_etypes
+            }
+        else:
+            input_embeddings = {
+                node_name: self.embedding[node_name](input_nodes[node_name])
+                for node_name in self.graph.ntypes
+            }
 
-        # Else aggregated them
+        output_embeddings = self.aggregator(blocks, input_embeddings)
+        # transpose the nested dict
+        output_embeddings = {
+            node_name: [
+                output_embeddings[etype][node_name]
+                for etype in output_embeddings.keys()
+                if node_name in output_embeddings[etype]
+            ]
+            for node_name in self.graph.ntypes
+        }
+
         if self.args.embedding_aggregator == 'concat':
 
             def embedding_aggregator(x):
@@ -148,16 +141,13 @@ class HeterogeneousNetwork(nn.Module):
             def embedding_aggregator(x):
                 return self.additive_attention(torch.stack(x, dim=1))
 
-        self.aggregated_embeddings = {
-            node_name: embedding_aggregator([
-                computed[(node_name, canonical_edge_type)]
-                for canonical_edge_type in self.graph.canonical_etypes
-                if (node_name, canonical_edge_type) in computed
-            ])
-            for node_name in self.graph.ntypes
+        output_embeddings = {
+            k: embedding_aggregator(v)
+            for k, v in output_embeddings.items()
         }
+        return output_embeddings
 
-    def forward(self, first, second, task_name):
+    def forward(self, first, second, task_name, provided_embeddings):
         '''
         Args:
             first: {
@@ -169,16 +159,15 @@ class HeterogeneousNetwork(nn.Module):
                 'index': (shape) batch_size
             }
         '''
-        if self.aggregated_embeddings is None:
-            self.aggregate_embeddings()
+        assert provided_embeddings is not None
 
         if isinstance(self.predictor, nn.ModuleDict):
             predictor = self.predictor[task_name]
         else:
             predictor = self.predictor
-        return predictor(
-            self.aggregated_embeddings[first['name']][first['index']],
-            self.aggregated_embeddings[second['name']][second['index']])
+
+        return predictor(provided_embeddings[first['name']][first['index']],
+                         provided_embeddings[second['name']][second['index']])
 
 
 if __name__ == '__main__':

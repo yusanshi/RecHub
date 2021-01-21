@@ -53,6 +53,15 @@ class EarlyStopping:
 @torch.no_grad()
 def evaluate(model, tasks, mode):
     metrics = {}
+
+    if is_graph_model():
+        input_nodes = {
+            node_name: model.graph.nodes(ntype=node_name).to(device)
+            for node_name in model.graph.ntypes
+        }
+        provided_embeddings = model.aggregate_embeddings(
+            input_nodes,
+            [model.graph.to(device)] * (len(args.graph_embedding_dims) - 1))
     for task in tasks:
         df = pd.read_table(f"./data/{args.dataset}/{mode}/{task['filename']}")
         columns = df.columns.tolist()
@@ -71,7 +80,8 @@ def evaluate(model, tasks, mode):
                                          (8 * args.batch_size)]
             first = {'name': columns[0], 'index': first_index}
             second = {'name': columns[1], 'index': second_index}
-            y_pred = model(first, second, task['name'])
+            y_pred = model(first, second, task['name'],
+                           provided_embeddings if is_graph_model() else None)
             y_pred = y_pred.cpu().numpy()
             y_preds.append(y_pred)
 
@@ -169,18 +179,26 @@ def create_model(metadata, logger):
                 'item') == 3
 
         graph_data = {}
+        if len(
+            [edge['scheme'][1] for edge in metadata['graph']['edge']]) != len(
+                set([edge['scheme'][1]
+                     for edge in metadata['graph']['edge']])):
+            raise NotImplementedError
+
         for edge in metadata['graph']['edge']:
+            if edge['scheme'][0] == edge['scheme'][2]:
+                raise NotImplementedError
+
             df = pd.read_table(
                 f"./data/{args.dataset}/train/{edge['filename']}")
             graph_data[edge['scheme']] = (torch.tensor(df.iloc[:, 0].values),
                                           torch.tensor(df.iloc[:, 1].values))
 
-        graph = dgl.heterograph(graph_data, num_nodes_dict)
+        graph = dgl.heterograph(add_reverse(graph_data), num_nodes_dict)
         for edge in metadata['graph']['edge']:
             if edge['weighted']:
                 raise NotImplementedError
 
-        graph = graph.to(device)
         model = HeterogeneousNetwork(args, graph, metadata['task'])
         return model
 
@@ -247,10 +265,35 @@ def add_scheme(metadata):
     return metadata
 
 
-def dict2table(d, k_fn=str, v_fn=str):
+def add_reverse(graph_data):
+    '''
+    Add reverse edges for graph data before feed into `dgl.heterograph`
+    '''
+    for scheme in list(graph_data.keys()):
+        if scheme[0] == scheme[2]:
+            graph_data[scheme] = (
+                torch.cat(graph_data[scheme]),
+                torch.cat(graph_data[scheme][::-1]),
+            )
+        else:
+            reversed_scheme = (scheme[2], f'{scheme[1]}-by', scheme[0])
+            graph_data[reversed_scheme] = (graph_data[scheme][1],
+                                           graph_data[scheme][0])
+    return graph_data
+
+
+def deep_apply(d, f=lambda x: f'{x:.4f}'):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            d[k] = deep_apply(v, f)
+        else:
+            d[k] = f(v)
+    return d
+
+
+def dict2table(d, k_fn=str, v_fn=lambda x: f'{x:.4f}'):
     '''
     Convert a nested dict to markdown table
-    Tips: use `v_fn = lambda x: f'{x:.4f}'` to format a float number
     '''
     def parse_header(d, depth=0):
         if isinstance(list(d.values())[0], dict):

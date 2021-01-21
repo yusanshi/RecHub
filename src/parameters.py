@@ -11,12 +11,17 @@ def parse_args():
 
     parser.add_argument('--num_epochs', type=int, default=3000)
     parser.add_argument('--learning_rate', type=float, default=0.001)
-    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--batch_size', type=int, default=2048)
+    parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--non_graph_embedding_dim', type=int, default=200)
     parser.add_argument('--graph_embedding_dims',
                         type=int,
                         nargs='+',
                         default=[200, 128, 96, 64])
+    parser.add_argument('--num_neighbors_sampled',
+                        type=int,
+                        nargs='+',
+                        default=[16, 16, 16])
     parser.add_argument('--single_attribute_dim', type=int, default=40)
     parser.add_argument('--attention_query_vector_dim', type=int, default=200)
     parser.add_argument(
@@ -27,7 +32,7 @@ def parse_args():
         help=
         'You can set first dim as 0 to make it automatically fit the input vector'
     )
-    parser.add_argument('--num_epochs_validate', type=int, default=10)
+    parser.add_argument('--num_epochs_validate', type=int, default=1)
     parser.add_argument('--early_stop_patience', type=int, default=20)
     parser.add_argument('--num_attention_heads', type=int, default=8)
     parser.add_argument('--save_checkpoint', type=str2bool, default=False)

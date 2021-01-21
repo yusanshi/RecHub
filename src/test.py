@@ -12,6 +12,7 @@ def test():
         metadata = json.load(f)
         metadata = add_scheme(metadata)
     model = create_model(metadata, logger).to(device)
+    # TODO
     checkpoint_path = latest_checkpoint(
         f'./checkpoint/{args.model_name}-{args.dataset}')
     if checkpoint_path is None:
@@ -22,9 +23,7 @@ def test():
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     metrics, _ = evaluate(model, metadata['task'], 'test')
-    logger.info(
-        f"Metrics on test set\n{dict2table(metrics, v_fn=lambda x: f'{x:.4f}')}"
-    )
+    logger.info(f'Metrics on test set\n{dict2table(metrics)}')
 
 
 if __name__ == '__main__':
