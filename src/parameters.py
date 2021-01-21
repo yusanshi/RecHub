@@ -33,7 +33,7 @@ def parse_args():
         'You can set first dim as 0 to make it automatically fit the input vector'
     )
     parser.add_argument('--num_batches_show_loss', type=int, default=50)
-    parser.add_argument('--num_epochs_validate', type=int, default=5)
+    parser.add_argument('--num_epochs_validate', type=int, default=10)
     parser.add_argument('--early_stop_patience', type=int, default=20)
     parser.add_argument('--num_attention_heads', type=int, default=8)
     parser.add_argument('--save_checkpoint', type=str2bool, default=False)
