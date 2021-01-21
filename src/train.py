@@ -151,11 +151,12 @@ def train():
             for input_nodes, positive_graph, negative_graph, blocks in batch_pbar(
                     dataloader):
                 batch += 1
-                node_coverage = {
-                    k: len(input_nodes[k]) / v
-                    for k, v in num_nodes_dict.items()
-                }
-                logger.debug(f'Node coverage {deep_apply(node_coverage)}')
+                if batch_pbar.count == 0:
+                    node_coverage = {
+                        k: len(input_nodes[k]) / v
+                        for k, v in num_nodes_dict.items()
+                    }
+                    logger.debug(f'Node coverage {deep_apply(node_coverage)}')
                 input_nodes = {k: v.to(device) for k, v in input_nodes.items()}
                 positive_graph = positive_graph.to(device)
                 negative_graph = negative_graph.to(device)
@@ -188,9 +189,10 @@ def train():
                 optimizer.step()
                 loss_full.append(loss.item())
                 writer.add_scalar('Train/Loss', loss.item(), batch)
-                logger.info(
-                    f"Time {time_since(start_time)}, epoch {epoch}, batch {batch}, current loss {loss.item():.4f}, average loss {np.mean(loss_full):.4f}, latest average loss {np.mean(loss_full[-10:]):.4f}"
-                )
+                if batch % args.num_batches_show_loss == 0:
+                    logger.info(
+                        f"Time {time_since(start_time)}, epoch {epoch}, batch {batch}, current loss {loss.item():.4f}, average loss {np.mean(loss_full):.4f}, latest average loss {np.mean(loss_full[-10:]):.4f}"
+                    )
         else:
             raise NotImplementedError
             # assert len(
