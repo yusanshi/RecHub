@@ -4,11 +4,31 @@ from dgl.nn.pytorch import HeteroGraphConv, GraphConv
 # TODO add dropout?
 
 
+def exchange(a, b, p):
+    return a * (1 - p) + b * p, a * p + b * (1 - p)
+
+
 class GCN(nn.Module):
-    def __init__(self, graph_embedding_dims, etypes):
+    def __init__(self, graph_embedding_dims, etypes, exchange_rate):
         super(GCN, self).__init__()
-        self.primary_etypes = [x for x in etypes if not x[1].endswith('-by')]
         assert len(graph_embedding_dims) >= 2
+        assert all([etype[0] != etype[2]
+                    for etype in etypes])  # TODO check the circle
+        self.primary_etypes = [x for x in etypes if not x[1].endswith('-by')]
+        etype2node = {
+            etype: [etype[0], etype[2]]
+            for etype in self.primary_etypes
+        }
+        self.node2etype = {}
+        for etype, nodes in etype2node.items():
+            for node in nodes:
+                if node not in self.node2etype:
+                    self.node2etype[node] = []
+                self.node2etype[node].append(etype)
+        for etypes in self.node2etype.values():
+            assert len(etypes) == 2
+        assert 0 <= exchange_rate <= 1
+        self.exchange_rate = exchange_rate
         self.layer_dict = nn.ModuleDict()
         for etype in self.primary_etypes:
             layers = nn.ModuleList()
@@ -31,30 +51,43 @@ class GCN(nn.Module):
     def forward(self, blocks, input_embeddings):
         '''
         Args:
-            input_embeddings: {etype: {node_name: ...}}
+            input_embeddings: {etype: {node_name: ...}} or {node_name: ...}
         Returns:
             {etype: {node_name: ...}}
         '''
         different_embeddings = True if isinstance(
             list(input_embeddings.values())[0], dict) else False
         # dgl.add_self_loop(g) # TODO
-        output_embeddings = {}
-        for etype in self.primary_etypes:
-            if different_embeddings:
-                h = input_embeddings[etype]
-            else:
-                h = {
+
+        if different_embeddings:
+            embeddings = input_embeddings
+        else:
+            embeddings = {
+                etype: {
                     node_name: input_embeddings[node_name]
                     for node_name in [etype[0], etype[2]]
                 }
-            assert len(h) == 2
-            for layer, block in zip(self.layer_dict[str(etype)], blocks):
-                block = dgl.edge_type_subgraph(
-                    block, [etype, (etype[2], f'{etype[1]}-by', etype[0])])
-                h = layer(block, h)
-            assert len(h) == 2, 'Unknown error'
-            output_embeddings[etype] = h
-        return output_embeddings
+                for etype in self.primary_etypes
+            }
+
+        for layer, block in enumerate(blocks):
+            for etype in self.primary_etypes:
+                embeddings[etype] = self.layer_dict[str(etype)][layer](
+                    dgl.edge_type_subgraph(
+                        block, [etype,
+                                (etype[2], f'{etype[1]}-by', etype[0])]),
+                    embeddings[etype],
+                )
+            for v in embeddings.items():
+                assert len(v) == 2, 'Unknown error'
+            if layer != len(blocks) - 1:
+                for node, etypes in self.node2etype.items():
+                    embeddings[etypes[0]][node], embeddings[
+                        etypes[1]][node] = exchange(
+                            embeddings[etypes[0]][node],
+                            embeddings[etypes[1]][node], self.exchange_rate)
+
+        return embeddings
 
 
 if __name__ == '__main__':
@@ -64,10 +97,8 @@ if __name__ == '__main__':
         add_reverse({
             ('user', 'follow', 'category'):
             (torch.randint(10, (100, )), torch.randint(10, (100, ))),
-            ('user', 'buy', 'game'):
+            ('user', 'play', 'game'):
             (torch.randint(10, (100, )), torch.randint(10, (100, ))),
-            ('user', 'play', 'game'): (torch.randint(10, (100, )),
-                                       torch.randint(10, (100, ))),
             ('game', 'belong', 'category'): (torch.randint(10, (100, )),
                                              torch.randint(10, (100, ))),
         }), {
@@ -75,7 +106,7 @@ if __name__ == '__main__':
             'category': 10,
             'game': 10
         })
-    model = GCN([16, 12, 8, 6], graph.canonical_etypes)
+    model = GCN([16, 12, 8, 6], graph.canonical_etypes, 0.5)
     print(model)
 
     # Test full graph
