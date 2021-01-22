@@ -41,7 +41,8 @@ class HeterogeneousNetwork(nn.Module):
 
         if 'GCN' in args.model_name:
             self.aggregator = GCN(args.graph_embedding_dims,
-                                  graph.canonical_etypes, self.exchange_rate)
+                                  graph.canonical_etypes,
+                                  self.args.exchange_rate)
         elif 'GAT' in args.model_name:
             self.aggregator = GAT(args.graph_embedding_dims,
                                   args.num_attention_heads)
