@@ -66,7 +66,6 @@ def evaluate(model, tasks, mode):
     for task in tasks:
         df = pd.read_table(f"./data/{args.dataset}/{mode}/{task['filename']}")
         columns = df.columns.tolist()
-        df = df.sort_values(columns[0])
         test_data = np.transpose(df.values)
         test_data = torch.from_numpy(test_data).to(device)
         first_indexs, second_indexs, y_trues = test_data
@@ -89,13 +88,14 @@ def evaluate(model, tasks, mode):
         y_preds = np.concatenate(y_preds, axis=0)
 
         if task['type'] == 'top-k-recommendation':
-            second_lengths_for_single_first = df.groupby(
-                columns[0]).size().values
-            assert len(
-                set(second_lengths_for_single_first)
-            ) == 1, f'The number of {columns[1]}s for different {columns[0]}s should be equal'
-            y_trues = y_trues.reshape(-1, second_lengths_for_single_first[0])
-            y_preds = y_preds.reshape(-1, second_lengths_for_single_first[0])
+            # second_lengths_for_single_first = df.groupby(
+            #     columns[0]).size().values
+            # assert len(
+            #     set(second_lengths_for_single_first)
+            # ) == 1, f'The number of {columns[1]}s for different {columns[0]}s should be equal'
+            # TODO check; magic number
+            y_trues = y_trues.reshape(-1, 100)
+            y_preds = y_preds.reshape(-1, 100)
 
             # TODO AUC, recall: batch version
             metrics[task['name']] = {
