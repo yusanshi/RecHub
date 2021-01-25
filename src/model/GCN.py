@@ -43,24 +43,11 @@ class GCN(nn.Module):
                     for e in [etype[1], f'{etype[1]}-by']
                 }))
             self.layer_dict[str(etype)] = layers
-        self.map_list = nn.ModuleList()
-        for i in range(len(graph_embedding_dims) - 2):
-            map_dict = nn.ModuleDict({})
-            for etype1 in self.primary_etypes:
-                for etype2 in self.primary_etypes:
-                    if etype1 != etype2:
-                        map_dict[f'{str(etype1)}->{str(etype2)}'] = nn.Linear(
-                            graph_embedding_dims[i + 1],
-                            graph_embedding_dims[i + 1])
-            self.map_list.append(map_dict)
 
     def exchange(self, a, b, etypes, layer):
         p = self.exchange_rate
-        map_dict = self.map_list[layer]
         etype1, etype2 = etypes
-        map_2to1 = map_dict[f'{str(etype2)}->{str(etype1)}']
-        map_1to2 = map_dict[f'{str(etype1)}->{str(etype2)}']
-        return a * (1 - p) + map_2to1(b) * p, map_1to2(a) * p + b * (1 - p)
+        return a * (1 - p) + b * p, a * p + b * (1 - p)
 
     def forward(self, blocks, input_embeddings):
         '''
