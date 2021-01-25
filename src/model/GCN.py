@@ -50,7 +50,7 @@ class GCN(nn.Module):
                 for etype2 in self.primary_etypes:
                     if etype1 != etype2:
                         map_dict[f'{str(etype1)}->{str(etype2)}'] = nn.Linear(
-                            graph_embedding_dims[i + 1],
+                            2 * graph_embedding_dims[i + 1],
                             graph_embedding_dims[i + 1])
             self.map_list.append(map_dict)
 
@@ -60,7 +60,8 @@ class GCN(nn.Module):
         etype1, etype2 = etypes
         map_2to1 = map_dict[f'{str(etype2)}->{str(etype1)}']
         map_1to2 = map_dict[f'{str(etype1)}->{str(etype2)}']
-        return a * (1 - p) + map_2to1(b) * p, map_1to2(a) * p + b * (1 - p)
+        concat = torch.cat((a, b), dim=-1)
+        return map_2to1(concat), map_1to2(concat)
 
     def forward(self, blocks, input_embeddings):
         '''
