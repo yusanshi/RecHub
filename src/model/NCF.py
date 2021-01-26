@@ -5,9 +5,14 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class NCF(nn.Module):
-    def __init__(self, args, user_num, item_num):
+    def __init__(self, args, graph, user_num, item_num):
         super(NCF, self).__init__()
         self.args = args
+        # Load graph for negative sampling
+        self.graph = graph
+        self.primary_etypes = [
+            x for x in graph.canonical_etypes if not x[1].endswith('-by')
+        ]
         assert args.non_graph_embedding_dim % 4 == 0
         # TODO put the following dims into parameters
         self.user_embedding = nn.ModuleDict({

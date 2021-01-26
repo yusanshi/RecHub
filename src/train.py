@@ -13,7 +13,6 @@ from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
 import math
-from sampler import Sampler  # TODO
 from itertools import chain
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -45,16 +44,12 @@ def train():
     best_checkpoint = copy.deepcopy(model.state_dict())
     best_val_metrics = copy.deepcopy(metrics)
 
-    samplers = {}
     criterions = {}
 
     if is_single_relation_model():
         assert len(metadata['task']) == 1
 
     for task in metadata['task']:
-        # samplers
-        samplers[task['name']] = Sampler(task, logger)
-
         # criterions
         if task['type'] == 'top-k-recommendation':
             original_loss_map = {
@@ -92,12 +87,6 @@ def train():
         os.makedirs(f'./checkpoint/{args.model_name}-{args.dataset}',
                     exist_ok=True)
 
-    # TODO
-    if args.sample_cache:
-        logger.warning(
-            'Sample cache enabled. To fully use the data, you should set `num_sample_cache` to a relatively larger value'
-        )
-
     enlighten_manager = enlighten.get_manager()
 
     batch = 0
@@ -112,64 +101,67 @@ def train():
                         args.graph_embedding_dims) - 1
                     neighbor_sampler = dgl.dataloading.MultiLayerNeighborSampler(
                         args.num_neighbors_sampled)
+                else:
+                    neighbor_sampler = dgl.dataloading.MultiLayerNeighborSampler(
+                        [0])  # TODO
 
-                    # Two versions of edge_sampling, either is OK
-                    def edge_sampling(etype):
-                        df = pd.DataFrame(
-                            torch.stack(model.graph.edges(etype=etype),
-                                        dim=1).numpy())
-                        return df.sample(
-                            frac=1).drop_duplicates(0).index.values
+                # Two versions of edge_sampling, either is OK
+                def edge_sampling(etype):
+                    df = pd.DataFrame(
+                        torch.stack(model.graph.edges(etype=etype),
+                                    dim=1).numpy())
+                    return df.sample(frac=1).drop_duplicates(0).index.values
 
-                    # def edge_sampling(etype):
-                    #     subgraph = dgl.edge_type_subgraph(model.graph, [etype])
-                    #     return dgl.sampling.sample_neighbors(
-                    #         subgraph, {
-                    #             etype[0]: subgraph.nodes(etype[0])
-                    #         },
-                    #         1,
-                    #         edge_dir='out').edata[dgl.EID]
+                # def edge_sampling(etype):
+                #     subgraph = dgl.edge_type_subgraph(model.graph, [etype])
+                #     return dgl.sampling.sample_neighbors(
+                #         subgraph, {
+                #             etype[0]: subgraph.nodes(etype[0])
+                #         },
+                #         1,
+                #         edge_dir='out').edata[dgl.EID]
 
-                    eid_dict = {
-                        etype: edge_sampling(etype)
-                        for etype in model.
-                        primary_etypes  # TODO model.graph.canonical_etypes ?
-                    }
+                eid_dict = {
+                    etype: edge_sampling(etype)
+                    for etype in
+                    model.primary_etypes  # TODO model.graph.canonical_etypes ?
+                }
 
-                    # parse reverse_etypes
-                    etypes = copy.deepcopy(model.graph.canonical_etypes)
-                    reverse_etypes = {}
-                    for etype in model.graph.canonical_etypes:
-                        if etype[1].endswith('-by'):
-                            reverse_etype = (etype[2], etype[1][:-len('-by')],
-                                             etype[0])
-                            reverse_etypes[etype] = reverse_etype
-                            reverse_etypes[reverse_etype] = etype
-                            etypes.remove(etype)
-                            etypes.remove(reverse_etype)
-                    assert len(etypes) == 0
+                # parse reverse_etypes
+                etypes = copy.deepcopy(model.graph.canonical_etypes)
+                reverse_etypes = {}
+                for etype in model.graph.canonical_etypes:
+                    if etype[1].endswith('-by'):
+                        reverse_etype = (etype[2], etype[1][:-len('-by')],
+                                         etype[0])
+                        reverse_etypes[etype] = reverse_etype
+                        reverse_etypes[reverse_etype] = etype
+                        etypes.remove(etype)
+                        etypes.remove(reverse_etype)
+                assert len(etypes) == 0
 
-                    dataloader = dgl.dataloading.EdgeDataLoader(
-                        model.graph,
-                        eid_dict,
-                        neighbor_sampler,
-                        exclude='reverse_types',
-                        reverse_etypes=reverse_etypes,
-                        negative_sampler=dgl.dataloading.negative_sampler.
-                        Uniform(args.negative_sampling_ratio),
-                        batch_size=args.batch_size,
-                        shuffle=True,
-                        drop_last=False,
-                        num_workers=args.num_workers,
-                        pin_memory=True)
+                dataloader = dgl.dataloading.EdgeDataLoader(
+                    model.graph,
+                    eid_dict,
+                    neighbor_sampler,
+                    exclude='reverse_types',
+                    reverse_etypes=reverse_etypes,
+                    negative_sampler=dgl.dataloading.negative_sampler.Uniform(
+                        args.negative_sampling_ratio),
+                    batch_size=args.batch_size,
+                    shuffle=True,
+                    drop_last=False,
+                    num_workers=args.num_workers,
+                    pin_memory=True)
 
-                    with enlighten_manager.counter(total=len(dataloader),
-                                                   desc='Training batches',
-                                                   unit='batches',
-                                                   leave=False) as batch_pbar:
-                        for input_nodes, positive_graph, negative_graph, blocks in batch_pbar(
-                                dataloader):
-                            batch += 1
+                with enlighten_manager.counter(total=len(dataloader),
+                                               desc='Training batches',
+                                               unit='batches',
+                                               leave=False) as batch_pbar:
+                    for input_nodes, positive_graph, negative_graph, blocks in batch_pbar(
+                            dataloader):
+                        batch += 1
+                        if is_graph_model():
                             if batch == 1:
                                 node_coverage = {
                                     k: len(v) / model.graph.num_nodes(k)
@@ -182,80 +174,49 @@ def train():
                                 k: v.to(device)
                                 for k, v in input_nodes.items()
                             }
-                            positive_graph = positive_graph.to(device)
-                            negative_graph = negative_graph.to(device)
+                        positive_graph = positive_graph.to(device)
+                        negative_graph = negative_graph.to(device)
+                        if is_graph_model():
                             blocks = [block.to(device) for block in blocks]
                             output_embeddings = model.aggregate_embeddings(
                                 input_nodes, blocks)
-                            loss = 0
-                            for task in metadata['task']:
-                                positive_index = torch.stack(
-                                    positive_graph.edges(etype=task['scheme']))
-                                negative_index = torch.stack(
-                                    negative_graph.edges(etype=task['scheme']))
-                                index = torch.cat(
-                                    (positive_index, negative_index), dim=1)
-                                first = {
-                                    'name': task['scheme'][0],
-                                    'index': index[0]
-                                }
-                                second = {
-                                    'name': task['scheme'][2],
-                                    'index': index[1]
-                                }
-                                y_pred = model(first, second, task['name'],
-                                               output_embeddings)
-                                y_true = torch.cat(
-                                    (torch.ones(positive_index.size(1)),
-                                     torch.zeros(
-                                         negative_index.size(1)))).to(device)
-                                task_loss = criterions[task['name']](y_pred,
-                                                                     y_true)
-                                loss += task_loss * task['weight']['loss']
+                        else:
+                            output_embeddings = None
+                        loss = 0
+                        for task in metadata['task']:
+                            positive_index = torch.stack(
+                                positive_graph.edges(etype=task['scheme']))
+                            negative_index = torch.stack(
+                                negative_graph.edges(etype=task['scheme']))
+                            index = torch.cat((positive_index, negative_index),
+                                              dim=1)
+                            first = {
+                                'name': task['scheme'][0],
+                                'index': index[0]
+                            }
+                            second = {
+                                'name': task['scheme'][2],
+                                'index': index[1]
+                            }
+                            y_pred = model(first, second, task['name'],
+                                           output_embeddings)
+                            y_true = torch.cat(
+                                (torch.ones(positive_index.size(1)),
+                                 torch.zeros(
+                                     negative_index.size(1)))).to(device)
+                            task_loss = criterions[task['name']](y_pred,
+                                                                 y_true)
+                            loss += task_loss * task['weight']['loss']
 
-                                if len(metadata['task']) > 1:
-                                    writer.add_scalar(
-                                        f"Train/Loss/{task['name']}",
-                                        task_loss.item(), batch)
+                            if len(metadata['task']) > 1:
+                                writer.add_scalar(f"Train/Loss/{task['name']}",
+                                                  task_loss.item(), batch)
 
-                            optimizer.zero_grad()
-                            loss.backward()
-                            optimizer.step()
-                            loss_full.append(loss.item())
-                            writer.add_scalar('Train/Loss', loss.item(), batch)
-                            if batch % args.num_batches_show_loss == 0:
-                                logger.info(
-                                    f"Time {time_since(start_time)}, epoch {epoch}, batch {batch}, current loss {loss.item():.4f}, average loss {np.mean(loss_full):.4f}, latest average loss {np.mean(loss_full[-10:]):.4f}"
-                                )
-
-                else:
-                    task = metadata['task'][0]
-                    df = samplers[task['name']].sample(epoch)
-                    columns = df.columns.tolist()
-                    df = df.sample(frac=1)
-                    train_data = np.transpose(df.values)
-                    train_data = torch.from_numpy(train_data).to(device)
-                    first_indexs, second_indexs, y_trues = train_data
-                    y_trues = y_trues.float()
-
-                    for i in range(math.ceil(len(df) / args.batch_size)):
-                        batch += 1
-                        first_index = first_indexs[i *
-                                                   args.batch_size:(i + 1) *
-                                                   args.batch_size]
-                        second_index = second_indexs[i *
-                                                     args.batch_size:(i + 1) *
-                                                     args.batch_size]
-                        first = {'name': columns[0], 'index': first_index}
-                        second = {'name': columns[1], 'index': second_index}
-                        y_pred = model(first, second, task['name'])
-                        y_true = y_trues[i * args.batch_size:(i + 1) *
-                                         args.batch_size]
-                        loss = criterions[task['name']](y_pred, y_true)
                         optimizer.zero_grad()
                         loss.backward()
                         optimizer.step()
                         loss_full.append(loss.item())
+                        writer.add_scalar('Train/Loss', loss.item(), batch)
                         if batch % args.num_batches_show_loss == 0:
                             logger.info(
                                 f"Time {time_since(start_time)}, epoch {epoch}, batch {batch}, current loss {loss.item():.4f}, average loss {np.mean(loss_full):.4f}, latest average loss {np.mean(loss_full[-10:]):.4f}"

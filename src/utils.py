@@ -82,6 +82,9 @@ def evaluate(model, tasks, mode):
         provided_embeddings = model.aggregate_embeddings(
             input_nodes,
             [model.graph.to(device)] * (len(args.graph_embedding_dims) - 1))
+    else:
+        provided_embeddings = None
+
     for task in tasks:
         df = pd.read_table(f"./data/{args.dataset}/{mode}/{task['filename']}")
         true_indices = np.where(df['value'].values == 1)[0]
@@ -105,8 +108,7 @@ def evaluate(model, tasks, mode):
                                          (8 * args.batch_size)]
             first = {'name': columns[0], 'index': first_index}
             second = {'name': columns[1], 'index': second_index}
-            y_pred = model(first, second, task['name'],
-                           provided_embeddings if is_graph_model() else None)
+            y_pred = model(first, second, task['name'], provided_embeddings)
             y_pred = y_pred.cpu().numpy()
             y_preds.append(y_pred)
 
@@ -173,40 +175,36 @@ def create_model(metadata, logger):
     else:
         assert len(metadata['graph']['edge']) > 1
 
-    if is_graph_model():
-        # TODO
-        # if args.model_name == 'HET-GraphRec':
-        #     assert len(metadata['graph']['edge']) == 2
-        #     node_names = [
-        #         metadata['graph']['edge'][0]['scheme'][0],
-        #         metadata['graph']['edge'][0]['scheme'][2],
-        #         metadata['graph']['edge'][1]['scheme'][0],
-        #         metadata['graph']['edge'][1]['scheme'][2],
-        #     ]
-        #     assert node_names.count('user') == 3 and node_names.count(
-        #         'item') == 3
+    # TODO
+    # if args.model_name == 'HET-GraphRec':
+    #     assert len(metadata['graph']['edge']) == 2
+    #     node_names = [
+    #         metadata['graph']['edge'][0]['scheme'][0],
+    #         metadata['graph']['edge'][0]['scheme'][2],
+    #         metadata['graph']['edge'][1]['scheme'][0],
+    #         metadata['graph']['edge'][1]['scheme'][2],
+    #     ]
+    #     assert node_names.count('user') == 3 and node_names.count(
+    #         'item') == 3
 
-        graph_data = {}
-        if len(
-            [edge['scheme'][1] for edge in metadata['graph']['edge']]) != len(
-                set([edge['scheme'][1]
-                     for edge in metadata['graph']['edge']])):
+    graph_data = {}
+    if len([edge['scheme'][1] for edge in metadata['graph']['edge']]) != len(
+            set([edge['scheme'][1] for edge in metadata['graph']['edge']])):
+        raise NotImplementedError
+
+    for edge in metadata['graph']['edge']:
+        if edge['scheme'][0] == edge['scheme'][2]:
             raise NotImplementedError
 
-        for edge in metadata['graph']['edge']:
-            if edge['scheme'][0] == edge['scheme'][2]:
-                raise NotImplementedError
+        df = pd.read_table(f"./data/{args.dataset}/train/{edge['filename']}")
+        graph_data[edge['scheme']] = (torch.tensor(df.iloc[:, 0].values),
+                                      torch.tensor(df.iloc[:, 1].values))
 
-            df = pd.read_table(
-                f"./data/{args.dataset}/train/{edge['filename']}")
-            graph_data[edge['scheme']] = (torch.tensor(df.iloc[:, 0].values),
-                                          torch.tensor(df.iloc[:, 1].values))
-
-        graph = dgl.heterograph(add_reverse(graph_data), num_nodes_dict)
+    graph = dgl.heterograph(add_reverse(graph_data), num_nodes_dict)
+    if is_graph_model():
         for edge in metadata['graph']['edge']:
             if edge['weighted']:
                 raise NotImplementedError
-
         model = HeterogeneousNetwork(args, graph, metadata['task'])
         return model
 
@@ -214,7 +212,8 @@ def create_model(metadata, logger):
         assert 'user' in num_nodes_dict and 'item' in num_nodes_dict
         if len(num_nodes_dict) > 2:
             logger.warning('Nodes except user and item are ignored')
-        model = NCF(args, num_nodes_dict['user'], num_nodes_dict['item'])
+        model = NCF(args, graph, num_nodes_dict['user'],
+                    num_nodes_dict['item'])
         return model
 
     raise NotImplementedError(
