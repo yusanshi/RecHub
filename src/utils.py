@@ -300,17 +300,29 @@ def add_reverse(graph_data):
     return graph_data
 
 
-def deep_apply(d, f=lambda x: f'{x:.4f}'):
-    def _deep_apply(d, f):
-        for k, v in d.items():
-            if isinstance(v, dict):
-                d[k] = _deep_apply(v, f)
-            else:
-                d[k] = f(v)
-        return d
+def copy_arguments(f):
+    def selectively_copy(x):
+        if isinstance(x, list) or isinstance(x, dict):
+            return copy.deepcopy(x)
+        else:
+            return x
 
-    # deepcopy to keep original content
-    return _deep_apply(copy.deepcopy(d), f)
+    def wrapper(*args, **kwargs):
+        args = tuple(selectively_copy(x) for x in args)
+        kwargs = {k: selectively_copy(v) for k, v in kwargs.items()}
+        return f(*args, **kwargs)
+
+    return wrapper
+
+
+@copy_arguments
+def deep_apply(d, f=lambda x: f'{x:.4f}'):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            d[k] = deep_apply(v, f)
+        else:
+            d[k] = f(v)
+    return d
 
 
 def dict2table(d, k_fn=str, v_fn=lambda x: f'{x:.4f}'):
