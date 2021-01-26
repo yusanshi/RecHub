@@ -8,7 +8,7 @@ import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss, add_scheme, dict2table, deep_apply
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss, add_scheme, dict2table, deep_apply, is_single_relation_model
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
@@ -45,11 +45,15 @@ def train():
     best_checkpoint = copy.deepcopy(model.state_dict())
     best_val_metrics = copy.deepcopy(metrics)
 
-    # samplers = {}
+    samplers = {}
     criterions = {}
+
+    if is_single_relation_model():
+        assert len(metadata['task']) == 1
+
     for task in metadata['task']:
         # samplers
-        # samplers[task['name']] = Sampler(task, logger)
+        samplers[task['name']] = Sampler(task, logger)
 
         # criterions
         if task['type'] == 'top-k-recommendation':
@@ -93,6 +97,7 @@ def train():
         logger.warning(
             'Sample cache enabled. To fully use the data, you should set `num_sample_cache` to a relatively larger value'
         )
+
     enlighten_manager = enlighten.get_manager()
 
     batch = 0
@@ -224,33 +229,37 @@ def train():
                                 )
 
                 else:
-                    raise NotImplementedError
-                    # assert len(
-                    #     metadata['task']
-                    # ) == 1 and metadata['task'][0]['type'] == 'top-k-recommendation'
+                    task = metadata['task'][0]
+                    df = samplers[task['name']].sample(epoch)
+                    columns = df.columns.tolist()
+                    df = df.sample(frac=1)
+                    train_data = np.transpose(df.values)
+                    train_data = torch.from_numpy(train_data).to(device)
+                    first_indexs, second_indexs, y_trues = train_data
+                    y_trues = y_trues.float()
 
-                    # task = metadata['task'][0]
-                    # df = samplers[task['name']].sample(epoch)
-                    # columns = df.columns.tolist()
-                    # df = df.sort_values(columns[0])  # TODO shuffle?
-                    # train_data = np.transpose(df.values)
-                    # train_data = torch.from_numpy(train_data).to(device)
-                    # first_indexs, second_indexs, y_trues = train_data
-                    # y_trues = y_trues.float()
-
-                    # for i in range(math.ceil(len(df) / args.batch_size)):
-                    #     first_index = first_indexs[i * args.batch_size:(i + 1) *
-                    #                                args.batch_size]
-                    #     second_index = second_indexs[i * args.batch_size:(i + 1) *
-                    #                                  args.batch_size]
-                    #     first = {'name': columns[0], 'index': first_index}
-                    #     second = {'name': columns[1], 'index': second_index}
-                    #     y_pred = model(first, second, task['name'])
-                    #     y_true = y_trues[i * args.batch_size:(i + 1) * args.batch_size]
-                    #     loss = criterions[task['name']](y_pred, y_true)
-                    #     optimizer.zero_grad()
-                    #     loss.backward()
-                    #     optimizer.step()
+                    for i in range(math.ceil(len(df) / args.batch_size)):
+                        batch += 1
+                        first_index = first_indexs[i *
+                                                   args.batch_size:(i + 1) *
+                                                   args.batch_size]
+                        second_index = second_indexs[i *
+                                                     args.batch_size:(i + 1) *
+                                                     args.batch_size]
+                        first = {'name': columns[0], 'index': first_index}
+                        second = {'name': columns[1], 'index': second_index}
+                        y_pred = model(first, second, task['name'])
+                        y_true = y_trues[i * args.batch_size:(i + 1) *
+                                         args.batch_size]
+                        loss = criterions[task['name']](y_pred, y_true)
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+                        loss_full.append(loss.item())
+                        if batch % args.num_batches_show_loss == 0:
+                            logger.info(
+                                f"Time {time_since(start_time)}, epoch {epoch}, batch {batch}, current loss {loss.item():.4f}, average loss {np.mean(loss_full):.4f}, latest average loss {np.mean(loss_full[-10:]):.4f}"
+                            )
 
                 if epoch % args.num_epochs_validate == 0:
                     model.eval()

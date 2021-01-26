@@ -168,26 +168,23 @@ def create_model(metadata, logger):
             logger.warning(
                 f"The attributes of node {node['name']} are ignored")
 
-    if is_graph_model():
-        if 'HET' in args.model_name:
-            assert len(
-                metadata['graph']['edge']
-            ) > 1, 'You have chosen a model for heterogeneous graph, but only single type of edge exists'
-        else:
-            assert len(
-                metadata['graph']['edge']
-            ) == 1, 'You have chosen a model for homogeneous graph, but more than one types of edge exists'
+    if is_single_relation_model():
+        assert len(metadata['graph']['edge']) == 1
+    else:
+        assert len(metadata['graph']['edge']) > 1
 
-        if args.model_name == 'HET-GraphRec':
-            assert len(metadata['graph']['edge']) == 2
-            node_names = [
-                metadata['graph']['edge'][0]['scheme'][0],
-                metadata['graph']['edge'][0]['scheme'][2],
-                metadata['graph']['edge'][1]['scheme'][0],
-                metadata['graph']['edge'][1]['scheme'][2],
-            ]
-            assert node_names.count('user') == 3 and node_names.count(
-                'item') == 3
+    if is_graph_model():
+        # TODO
+        # if args.model_name == 'HET-GraphRec':
+        #     assert len(metadata['graph']['edge']) == 2
+        #     node_names = [
+        #         metadata['graph']['edge'][0]['scheme'][0],
+        #         metadata['graph']['edge'][0]['scheme'][2],
+        #         metadata['graph']['edge'][1]['scheme'][0],
+        #         metadata['graph']['edge'][1]['scheme'][2],
+        #     ]
+        #     assert node_names.count('user') == 3 and node_names.count(
+        #         'item') == 3
 
         graph_data = {}
         if len(
@@ -242,12 +239,23 @@ def create_logger():
 
 
 def is_graph_model():
+    '''
+    Whether need the message passing on the graph
+    '''
     if args.model_name in ['NCF']:
         return False
     if args.model_name in [
-            'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF',
-            'HET-GraphRec'
+            'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF', 'GraphRec'
     ]:
+        return True
+
+    raise NotImplementedError
+
+
+def is_single_relation_model():
+    if args.model_name in ['NCF', 'GCN', 'GAT', 'NGCF']:
+        return True
+    if args.model_name in ['HET-GCN', 'HET-GAT', 'HET-NGCF']:
         return True
 
     raise NotImplementedError

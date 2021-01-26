@@ -9,10 +9,10 @@ def str2bool(x):
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--num_epochs', type=int, default=3000)
+    parser.add_argument('--num_epochs', type=int, default=2000)
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--batch_size', type=int, default=4096)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=16)
     parser.add_argument('--non_graph_embedding_dim', type=int, default=200)
     parser.add_argument('--graph_embedding_dims',
                         type=int,
@@ -22,7 +22,8 @@ def parse_args():
                         type=int,
                         nargs='+',
                         default=[16, 16, 16])
-    parser.add_argument('--single_attribute_dim', type=int, default=40)
+    parser.add_argument('--single_attribute_dim', type=int,
+                        default=40)  # TODO: support attributes
     parser.add_argument('--attention_query_vector_dim', type=int, default=200)
     parser.add_argument(
         '--dnn_predictor_dims',
@@ -65,9 +66,9 @@ def parse_args():
             'HET-GCN',
             'HET-GAT',
             'HET-NGCF',
-            'HET-GraphRec',
 
             # To be categorized
+            'GraphRec',
             'DeepFM',
             'DSSM',
             'LightGCN',
