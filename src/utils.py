@@ -255,7 +255,7 @@ def is_single_relation_model():
     if args.model_name in ['NCF', 'GCN', 'GAT', 'NGCF']:
         return True
     if args.model_name in ['HET-GCN', 'HET-GAT', 'HET-NGCF']:
-        return True
+        return False
 
     raise NotImplementedError
 

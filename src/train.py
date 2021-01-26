@@ -190,6 +190,12 @@ def train():
                                 negative_graph.edges(etype=task['scheme']))
                             index = torch.cat((positive_index, negative_index),
                                               dim=1)
+                            if not is_graph_model():
+                                # map indexs
+                                index[0] = positive_graph.ndata[dgl.NID][
+                                    task['scheme'][0]][index[0]]
+                                index[1] = positive_graph.ndata[dgl.NID][
+                                    task['scheme'][2]][index[1]]
                             first = {
                                 'name': task['scheme'][0],
                                 'index': index[0]
