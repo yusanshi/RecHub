@@ -75,13 +75,9 @@ def parse_args():
             'DiffNet++',
             'DANSER'
         ])
-    parser.add_argument('--dataset',
-                        type=str,
-                        default='jd-small',
-                        choices=[
-                            'jd-small',
-                            'jd-large',
-                        ])
+    parser.add_argument('--dataset', type=str, default='jd', choices=[
+        'jd',
+    ])
     parser.add_argument('--embedding_aggregator',
                         type=str,
                         default='concat',

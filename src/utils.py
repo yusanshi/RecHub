@@ -14,14 +14,33 @@ import coloredlogs
 import math
 import datetime
 import copy
+from multiprocessing import Pool
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
 
 
-def recall(y_true, y_score, k):
-    order = np.argsort(y_score)[::-1][:k]
-    return np.sum(np.take(y_true, order)) / np.sum(y_true)
+def recall(y_trues, y_scores, k):
+    assert y_trues.shape == y_scores.shape
+    assert len(y_trues.shape) == 2
+    orders = np.argsort(y_scores, axis=-1)[:, ::-1][:, :k]
+    return np.mean(
+        np.sum(np.take(y_trues, orders), axis=-1) / np.sum(y_trues, axis=-1))
+
+
+def mrr(y_trues, y_scores):
+    assert y_trues.shape == y_scores.shape
+    assert len(y_trues.shape) == 2
+    orders = np.argsort(y_scores, axis=-1)[:, ::-1]
+    y_trues = np.take(y_trues, orders)
+    rr_scores = y_trues / (np.arange(y_trues.shape[1]) + 1)
+    return np.mean(np.sum(rr_scores, axis=-1) / np.sum(y_trues, axis=-1))
+
+
+def fast_roc_auc_score(y_trues, y_scores):
+    # TODO can it be faster?
+    with Pool(processes=args.num_workers) as pool:
+        return np.mean(pool.starmap(roc_auc_score, zip(y_trues, y_scores)))
 
 
 class EarlyStopping:
@@ -65,14 +84,20 @@ def evaluate(model, tasks, mode):
             [model.graph.to(device)] * (len(args.graph_embedding_dims) - 1))
     for task in tasks:
         df = pd.read_table(f"./data/{args.dataset}/{mode}/{task['filename']}")
+        true_indices = np.where(df['value'].values == 1)[0]
+        single_sample_length = true_indices[1] - true_indices[0]
+        assert np.all(np.diff(true_indices) == single_sample_length)
         columns = df.columns.tolist()
         test_data = np.transpose(df.values)
         test_data = torch.from_numpy(test_data).to(device)
         first_indexs, second_indexs, y_trues = test_data
-
+        first_indexs_stacked = first_indexs.view(-1, single_sample_length)
+        # Make sure equality in each rows
+        assert torch.all(
+            first_indexs_stacked.max(dim=-1)[0] == first_indexs_stacked.min(
+                dim=-1)[0])
         y_preds = []
         y_trues = y_trues.cpu().numpy()
-
         for i in range(math.ceil(len(df) / (8 * args.batch_size))):
             first_index = first_indexs[i * (8 * args.batch_size):(i + 1) *
                                        (8 * args.batch_size)]
@@ -88,38 +113,23 @@ def evaluate(model, tasks, mode):
         y_preds = np.concatenate(y_preds, axis=0)
 
         if task['type'] == 'top-k-recommendation':
-            # second_lengths_for_single_first = df.groupby(
-            #     columns[0]).size().values
-            # assert len(
-            #     set(second_lengths_for_single_first)
-            # ) == 1, f'The number of {columns[1]}s for different {columns[0]}s should be equal'
-            # TODO check; magic number
-            y_trues = y_trues.reshape(-1, 100)
-            y_preds = y_preds.reshape(-1, 100)
-
-            # TODO AUC, recall: batch version
+            y_trues = y_trues.reshape(-1, single_sample_length)
+            y_preds = y_preds.reshape(-1, single_sample_length)
             metrics[task['name']] = {
-                'AUC':
-                np.average(
-                    [roc_auc_score(x, y) for x, y in zip(y_trues, y_preds)]),
-                'NDCG@5':
-                ndcg_score(y_trues, y_preds, k=5, ignore_ties=True),
-                'NDCG@10':
-                ndcg_score(y_trues, y_preds, k=10, ignore_ties=True),
-                'recall@5':
-                np.average(
-                    [recall(x, y, k=5) for x, y in zip(y_trues, y_preds)]),
-                'recall@10':
-                np.average(
-                    [recall(x, y, k=10) for x, y in zip(y_trues, y_preds)])
+                'AUC': fast_roc_auc_score(y_trues, y_preds),
+                'MRR': mrr(y_trues, y_preds),
+                'NDCG@5': ndcg_score(y_trues, y_preds, k=5, ignore_ties=True),
+                'NDCG@10': ndcg_score(y_trues, y_preds, k=10,
+                                      ignore_ties=True),
+                'Recall@5': recall(y_trues, y_preds, k=5),
+                'Recall@10': recall(y_trues, y_preds, k=10),
             }
         elif task['type'] == 'interaction-attribute-regression':
             raise NotImplementedError
         else:
             raise NotImplementedError
-
-    overall = np.average([
-        np.average(list(metrics[task['name']].values())) *
+    overall = np.mean([
+        np.mean(list(metrics[task['name']].values())) *
         task['weight']['metric'] for task in tasks
     ])
     return metrics, overall

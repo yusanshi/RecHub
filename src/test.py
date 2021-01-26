@@ -12,7 +12,6 @@ def test():
         metadata = json.load(f)
         metadata = add_scheme(metadata)
     model = create_model(metadata, logger).to(device)
-    # TODO
     checkpoint_path = latest_checkpoint(
         f'./checkpoint/{args.model_name}-{args.dataset}')
     if checkpoint_path is None:
