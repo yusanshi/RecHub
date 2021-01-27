@@ -22,7 +22,7 @@
       "name": "User purchase item",
       "filename": "user-item-purchase.tsv",
       "type": "top-k-recommendation",
-      "loss": "log",
+      "loss": "binary-cross-entropy",
       "weight": { "loss": 1, "metric": 1 }
     }
   ]

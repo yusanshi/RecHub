@@ -258,15 +258,6 @@ def is_single_relation_model():
     raise NotImplementedError
 
 
-class BPRLoss(nn.Module):
-    def __init__(self):
-        super(BPRLoss, self).__init__()
-        raise NotImplementedError
-
-    def forward(self, input, target):
-        pass
-
-
 def add_scheme(metadata):
     def parse_scheme_from_filename(filename):
         filename = filename.split('.')[0].split('-')

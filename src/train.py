@@ -8,11 +8,11 @@ import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, BPRLoss, add_scheme, dict2table, deep_apply, is_single_relation_model
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, add_scheme, dict2table, deep_apply, is_single_relation_model
+from loss import BPRLoss, MarginLoss
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
-import math
 from itertools import chain
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -62,10 +62,14 @@ def train():
                 logger.warning(
                     'You are using a different type of loss with the type in the paper'
                 )
-            if task['loss'] == 'log':
+            if task['loss'] == 'binary-cross-entropy':
                 criterions[task['name']] = nn.BCEWithLogitsLoss()
+            elif task['loss'] == 'cross-entropy':
+                criterions[task['name']] = nn.CrossEntropyLoss()
             elif task['loss'] == 'bpr':
                 criterions[task['name']] = BPRLoss()
+            elif task['loss'] == 'margin':
+                criterions[task['name']] = MarginLoss()
             else:
                 raise NotImplementedError
 
@@ -206,12 +210,48 @@ def train():
                             }
                             y_pred = model(first, second, task['name'],
                                            output_embeddings)
-                            y_true = torch.cat(
-                                (torch.ones(positive_index.size(1)),
-                                 torch.zeros(
-                                     negative_index.size(1)))).to(device)
-                            task_loss = criterions[task['name']](y_pred,
-                                                                 y_true)
+                            if task['loss'] == 'binary-cross-entropy':
+                                y_true = torch.cat(
+                                    (torch.ones(positive_index.size(1)),
+                                     torch.zeros(
+                                         negative_index.size(1)))).to(device)
+                                task_loss = criterions[task['name']](y_pred,
+                                                                     y_true)
+                            elif task['loss'] == 'cross-entropy':
+                                assert torch.equal(
+                                    positive_index[0].expand(
+                                        args.negative_sampling_ratio,
+                                        -1).transpose(0, 1),
+                                    negative_index[0].view(
+                                        -1, args.negative_sampling_ratio))
+                                sample_length = positive_index.size(1)
+                                positive_pred = y_pred[:
+                                                       sample_length].unsqueeze(
+                                                           dim=-1)
+                                negative_pred = y_pred[sample_length:].view(
+                                    sample_length,
+                                    args.negative_sampling_ratio)
+                                y_pred = torch.cat(
+                                    (positive_pred, negative_pred), dim=1)
+                                y_true = torch.zeros(sample_length).long().to(
+                                    device)
+                                task_loss = criterions[task['name']](y_pred,
+                                                                     y_true)
+                            elif task['loss'] == 'margin':
+                                assert torch.equal(
+                                    positive_index[0].expand(
+                                        args.negative_sampling_ratio,
+                                        -1).transpose(0, 1),
+                                    negative_index[0].view(
+                                        -1, args.negative_sampling_ratio))
+                                sample_length = positive_index.size(1)
+                                positive_pred = y_pred[:sample_length]
+                                negative_pred = y_pred[sample_length:]
+                                task_loss = criterions[task['name']](
+                                    positive_pred, negative_pred)
+                            else:
+                                raise NotImplementedError
+
                             loss += task_loss * task['weight']['loss']
 
                             if len(metadata['task']) > 1:
