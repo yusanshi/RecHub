@@ -18,10 +18,12 @@ def parse_args():
                         type=int,
                         nargs='+',
                         default=[200, 128, 96, 64])
-    parser.add_argument('--num_neighbors_sampled',
-                        type=int,
-                        nargs='+',
-                        default=[16, 16, 16])
+    parser.add_argument(
+        '--num_neighbors_sampled',
+        type=int,
+        nargs='+',
+        default=[16, 16, 16],
+        help='-1 for all neighbors in a layer, example: [16, 16, -1]')
     parser.add_argument('--single_attribute_dim', type=int,
                         default=40)  # TODO: support attributes
     parser.add_argument('--attention_query_vector_dim', type=int, default=200)

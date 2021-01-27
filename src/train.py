@@ -100,7 +100,6 @@ def train():
                                        unit='epochs') as epoch_pbar:
             for epoch in epoch_pbar(range(1, args.num_epochs + 1)):
                 if is_graph_model():
-                    # TODO Neighbor sampling
                     assert len(args.num_neighbors_sampled) == len(
                         args.graph_embedding_dims) - 1
                     neighbor_sampler = dgl.dataloading.MultiLayerNeighborSampler(
