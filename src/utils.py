@@ -203,8 +203,8 @@ def create_model(metadata, logger):
             raise NotImplementedError
 
         df = pd.read_table(f"./data/{args.dataset}/train/{edge['filename']}")
-        graph_data[edge['scheme']] = (torch.tensor(df.iloc[:, 0].values),
-                                      torch.tensor(df.iloc[:, 1].values))
+        graph_data[edge['scheme']] = (torch.as_tensor(df.iloc[:, 0].values),
+                                      torch.as_tensor(df.iloc[:, 1].values))
 
     graph = dgl.heterograph(add_reverse(graph_data), num_nodes_dict)
     if is_graph_model():
