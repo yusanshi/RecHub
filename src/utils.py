@@ -19,20 +19,12 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
 
 
-def take_by_row(a, indices):
-    # TODO better way to do this?
-    assert len(a.shape) == 2
-    assert len(indices.shape) == 2
-    assert a.shape[0] == indices.shape[0]
-    return np.stack([np.take(x, y) for x, y in zip(a, indices)])
-
-
 def recall(y_trues, y_scores, k):
     assert y_trues.shape == y_scores.shape
     assert len(y_trues.shape) == 2
     orders = np.argsort(y_scores, axis=-1)[:, ::-1][:, :k]
     return np.mean(
-        np.sum(take_by_row(y_trues, orders), axis=-1) /
+        np.sum(np.take_along_axis(y_trues, orders, axis=-1), axis=-1) /
         np.sum(y_trues, axis=-1))
 
 
@@ -40,7 +32,7 @@ def mrr(y_trues, y_scores):
     assert y_trues.shape == y_scores.shape
     assert len(y_trues.shape) == 2
     orders = np.argsort(y_scores, axis=-1)[:, ::-1]
-    y_trues = take_by_row(y_trues, orders)
+    y_trues = np.take_along_axis(y_trues, orders, axis=-1)
     rr_scores = y_trues / (np.arange(y_trues.shape[1]) + 1)
     return np.mean(np.sum(rr_scores, axis=-1) / np.sum(y_trues, axis=-1))
 
@@ -78,6 +70,10 @@ class EarlyStopping:
         return early_stop, get_better
 
 
+# A simple cache mechanism for df reading and sorting, since it will be run for many times
+_df_cache_for_validation = {}
+
+
 @torch.no_grad()
 def evaluate(model, tasks, mode):
     metrics = {}
@@ -94,9 +90,16 @@ def evaluate(model, tasks, mode):
         provided_embeddings = None
 
     for task in tasks:
-        df = pd.read_table(f"./data/{args.dataset}/{mode}/{task['filename']}")
+        file_path = f"./data/{args.dataset}/{mode}/{task['filename']}"
+        if mode == 'val' and file_path in _df_cache_for_validation:
+            df = _df_cache_for_validation[file_path]
+        else:
+            df = pd.read_table(file_path)
+            df.sort_values(df.columns[0], inplace=True)
+            if mode == 'val':
+                _df_cache_for_validation[file_path] = df
+
         columns = df.columns.tolist()
-        df = df.sort_values(columns[0])
         test_data = np.transpose(df.values)
         test_data = torch.from_numpy(test_data).to(device)
         first_indexs, second_indexs, y_trues = test_data
