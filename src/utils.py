@@ -6,7 +6,6 @@ from model.HET import HeterogeneousNetwork
 from model.NCF import NCF
 from sklearn.metrics import roc_auc_score, ndcg_score
 import torch
-import torch.nn as nn
 from parameters import parse_args
 import os
 import logging
@@ -20,19 +19,28 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
 
 
+def take_by_row(a, indices):
+    # TODO better way to do this?
+    assert len(a.shape) == 2
+    assert len(indices.shape) == 2
+    assert a.shape[0] == indices.shape[0]
+    return np.stack([np.take(x, y) for x, y in zip(a, indices)])
+
+
 def recall(y_trues, y_scores, k):
     assert y_trues.shape == y_scores.shape
     assert len(y_trues.shape) == 2
     orders = np.argsort(y_scores, axis=-1)[:, ::-1][:, :k]
     return np.mean(
-        np.sum(np.take(y_trues, orders), axis=-1) / np.sum(y_trues, axis=-1))
+        np.sum(take_by_row(y_trues, orders), axis=-1) /
+        np.sum(y_trues, axis=-1))
 
 
 def mrr(y_trues, y_scores):
     assert y_trues.shape == y_scores.shape
     assert len(y_trues.shape) == 2
     orders = np.argsort(y_scores, axis=-1)[:, ::-1]
-    y_trues = np.take(y_trues, orders)
+    y_trues = take_by_row(y_trues, orders)
     rr_scores = y_trues / (np.arange(y_trues.shape[1]) + 1)
     return np.mean(np.sum(rr_scores, axis=-1) / np.sum(y_trues, axis=-1))
 
