@@ -1,6 +1,6 @@
 import torch.nn as nn
 import dgl
-from model.NGCF.NGCFConv import NGCFConv
+from .ngcf_conv import NGCFConv
 
 
 class NGCF(nn.Module):

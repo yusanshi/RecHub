@@ -2,73 +2,19 @@ import numpy as np
 import pandas as pd
 import time
 import dgl
-from model.HET import HeterogeneousNetwork
-from model.NCF import NCF
-from sklearn.metrics import roc_auc_score, ndcg_score
+from model import *  # TODO: how to import relatively
 import torch
-from parameters import parse_args
+from parameters import parse_args  # TODO: how to import relatively
 import os
 import logging
 import coloredlogs
 import math
 import datetime
 import copy
-from multiprocessing import Pool
+from .metrics import *
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
-
-
-def recall(y_trues, y_scores, k):
-    assert y_trues.shape == y_scores.shape
-    assert len(y_trues.shape) == 2
-    orders = np.argsort(y_scores, axis=-1)[:, ::-1][:, :k]
-    return np.mean(
-        np.sum(np.take_along_axis(y_trues, orders, axis=-1), axis=-1) /
-        np.sum(y_trues, axis=-1))
-
-
-def mrr(y_trues, y_scores):
-    assert y_trues.shape == y_scores.shape
-    assert len(y_trues.shape) == 2
-    orders = np.argsort(y_scores, axis=-1)[:, ::-1]
-    y_trues = np.take_along_axis(y_trues, orders, axis=-1)
-    rr_scores = y_trues / (np.arange(y_trues.shape[1]) + 1)
-    return np.mean(np.sum(rr_scores, axis=-1) / np.sum(y_trues, axis=-1))
-
-
-def fast_roc_auc_score(y_trues, y_scores):
-    # TODO can it be faster?
-    with Pool(processes=args.num_workers) as pool:
-        return np.mean(pool.starmap(roc_auc_score, zip(y_trues, y_scores)))
-
-
-class EarlyStopping:
-    def __init__(self, patience=5):
-        self.patience = patience
-        self.counter = 0
-        self.best_loss = np.Inf
-
-    def __call__(self, val_loss):
-        """
-        if you use other metrics where a higher value is better, e.g. accuracy,
-        call this with its corresponding negative value
-        """
-        if val_loss < self.best_loss:
-            early_stop = False
-            get_better = True
-            self.counter = 0
-            self.best_loss = val_loss
-        else:
-            get_better = False
-            self.counter += 1
-            if self.counter >= self.patience:
-                early_stop = True
-            else:
-                early_stop = False
-
-        return early_stop, get_better
-
 
 # A simple cache mechanism for df reading and sorting, since it will be run for many times
 _df_cache_for_validation = {}
