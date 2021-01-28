@@ -1,6 +1,7 @@
 import torch.nn as nn
 import dgl
 from dgl.nn.pytorch import HeteroGraphConv, GraphConv
+import torch
 # TODO add dropout?
 
 
@@ -55,7 +56,6 @@ class GCN(nn.Module):
             self.map_list.append(map_dict)
 
     def exchange(self, a, b, etypes, layer):
-        p = self.exchange_rate
         map_dict = self.map_list[layer]
         etype1, etype2 = etypes
         map_2to1 = map_dict[f'{str(etype2)}->{str(etype1)}']
