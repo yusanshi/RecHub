@@ -72,14 +72,20 @@ def evaluate(model, tasks, mode):
             y_trues = y_trues.reshape(-1, single_sample_length[0])
             y_preds = y_preds.reshape(-1, single_sample_length[0])
             metrics[task['name']] = {
-                'AUC': fast_roc_auc_score(y_trues, y_preds),
-                'MRR': mrr(y_trues, y_preds),
-                'NDCG@10': ndcg_score(y_trues, y_preds, k=10,
-                                      ignore_ties=True),
-                'NDCG@50': ndcg_score(y_trues, y_preds, k=50,
-                                      ignore_ties=True),
-                'Recall@10': recall(y_trues, y_preds, k=10),
-                'Recall@50': recall(y_trues, y_preds, k=50),
+                'AUC':
+                fast_roc_auc_score(y_trues,
+                                   y_preds,
+                                   num_processes=args.num_workers),
+                'MRR':
+                mrr(y_trues, y_preds),
+                'NDCG@10':
+                ndcg_score(y_trues, y_preds, k=10, ignore_ties=True),
+                'NDCG@50':
+                ndcg_score(y_trues, y_preds, k=50, ignore_ties=True),
+                'Recall@10':
+                recall(y_trues, y_preds, k=10),
+                'Recall@50':
+                recall(y_trues, y_preds, k=50),
             }
         elif task['type'] == 'interaction-attribute-regression':
             raise NotImplementedError

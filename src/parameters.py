@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument(
         '--neighbors_sampling_quantile',
         type=float,
-        default=0.8,
+        default=0.95,
         help=
         'Set the number of sampled neighbors to the quantile of the numbers of neighbors'
     )

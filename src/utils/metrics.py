@@ -21,7 +21,7 @@ def mrr(y_trues, y_scores):
     return np.mean(np.sum(rr_scores, axis=-1) / np.sum(y_trues, axis=-1))
 
 
-def fast_roc_auc_score(y_trues, y_scores):
+def fast_roc_auc_score(y_trues, y_scores, num_processes=None):
     # TODO can it be faster?
-    with Pool() as pool:
+    with Pool(processes=num_processes) as pool:
         return np.mean(pool.starmap(roc_auc_score, zip(y_trues, y_scores)))
