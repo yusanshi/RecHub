@@ -71,9 +71,7 @@ def parse_args():
             'DiffNet++',
             'DANSER'
         ])
-    parser.add_argument('--dataset', type=str, default='jd', choices=[
-        'jd',
-    ])
+    parser.add_argument('--dataset', type=str, default='jd')
     parser.add_argument('--embedding_aggregator',
                         type=str,
                         default='concat',
@@ -83,6 +81,21 @@ def parse_args():
                         default='dnn',
                         choices=['dot', 'Wdot', 'dnn'])
     parser.add_argument('--metadata_path', type=str)
+    parser.add_argument('--node_choice',
+                        type=int,
+                        nargs='+',
+                        default=[],
+                        help='Left empty to use all in metadata file')
+    parser.add_argument('--edge_choice',
+                        type=int,
+                        nargs='+',
+                        default=[],
+                        help='Left empty to use all in metadata file')
+    parser.add_argument('--task_choice',
+                        type=int,
+                        nargs='+',
+                        default=[],
+                        help='Left empty to use all in metadata file')
     args = parser.parse_args()
     if args.metadata_path is None:
         args.metadata_path = f'metadata/{args.dataset}.json'

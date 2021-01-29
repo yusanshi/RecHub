@@ -8,7 +8,7 @@ import os
 import time
 import datetime
 from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, add_scheme, dict2table, deep_apply, is_single_relation_model
+from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, process_metadata, dict2table, deep_apply, is_single_relation_model
 from loss import BPRLoss, MarginLoss
 from torch.utils.tensorboard import SummaryWriter
 import enlighten
@@ -22,7 +22,7 @@ args = parse_args()
 def train():
     with open(args.metadata_path) as f:
         metadata = json.load(f)
-        metadata = add_scheme(metadata)
+        metadata = process_metadata(metadata)
 
     assert set([node['name'] for node in metadata['graph']['node']]) == set(
         chain.from_iterable([

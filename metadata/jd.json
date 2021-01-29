@@ -8,22 +8,45 @@
       {
         "name": "user",
         "attribute": []
+      },
+      {
+        "name": "anchor",
+        "attribute": []
       }
     ],
     "edge": [
       {
         "filename": "user-item-purchase.tsv",
         "weighted": false
+      },
+      {
+        "filename": "user-anchor-follow.tsv",
+        "weighted": false
+      },
+      {
+        "filename": "anchor-item-sell.tsv",
+        "weighted": false
       }
     ]
   },
   "task": [
     {
-      "name": "User purchase item",
       "filename": "user-item-purchase.tsv",
       "type": "top-k-recommendation",
       "loss": "binary-cross-entropy",
       "weight": { "loss": 1, "metric": 1 }
+    },
+    {
+      "filename": "user-anchor-follow.tsv",
+      "type": "top-k-recommendation",
+      "loss": "binary-cross-entropy",
+      "weight": { "loss": 1, "metric": 0 }
+    },
+    {
+      "filename": "anchor-item-sell.tsv",
+      "type": "top-k-recommendation",
+      "loss": "binary-cross-entropy",
+      "weight": { "loss": 1, "metric": 0 }
     }
   ]
 }

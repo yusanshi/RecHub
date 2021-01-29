@@ -215,7 +215,7 @@ def is_single_relation_model():
     raise NotImplementedError
 
 
-def add_scheme(metadata):
+def process_metadata(metadata):
     def parse_scheme_from_filename(filename):
         filename = filename.split('.')[0].split('-')
         assert len(filename) == 3
@@ -225,6 +225,23 @@ def add_scheme(metadata):
         edge['scheme'] = parse_scheme_from_filename(edge['filename'])
     for task in metadata['task']:
         task['scheme'] = parse_scheme_from_filename(task['filename'])
+        task['name'] = os.path.splitext(task['filename'])[0]
+
+    if args.node_choice:
+        metadata['graph']['node'] = [
+            metadata['graph']['node'][x] for x in args.node_choice
+        ]
+    if args.edge_choice:
+        metadata['graph']['edge'] = [
+            metadata['graph']['edge'][x] for x in args.edge_choice
+        ]
+    if args.task_choice:
+        metadata['task'] = [metadata['task'][x] for x in args.task_choice]
+
+    assert any([x['weight']['loss'] > 0 for x in metadata['task']
+                ]), 'Make sure at least one task with positive loss weight'
+    assert any([x['weight']['metric'] > 0 for x in metadata['task']
+                ]), 'Make sure at least one task with positive metric weight'
 
     return metadata
 
