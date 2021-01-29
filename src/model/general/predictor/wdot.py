@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class WDotPredictor(nn.Module):
     def __init__(self, in_dims, out_dim):
-        super(WDotPredictor, self).__init__()
+        super().__init__()
         assert len(in_dims) == 2
         self.first_linear = nn.Linear(in_dims[0], out_dim)
         self.second_linear = nn.Linear(in_dims[1], out_dim)

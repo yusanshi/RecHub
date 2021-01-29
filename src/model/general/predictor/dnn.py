@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class DNNPredictor(nn.Module):
     def __init__(self, dims):
-        super(DNNPredictor, self).__init__()
+        super().__init__()
         assert len(dims) >= 2 and dims[-1] == 1
 
         layers = []

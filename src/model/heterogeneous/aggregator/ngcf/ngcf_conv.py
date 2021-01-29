@@ -11,7 +11,7 @@ def has_self_loop(graph):
 
 class NGCFConv(nn.Module):
     def __init__(self, in_features, out_features, activation=None):
-        super(NGCFConv, self).__init__()
+        super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.activation = activation

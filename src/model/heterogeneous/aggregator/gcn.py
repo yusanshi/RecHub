@@ -1,60 +1,19 @@
 import torch.nn as nn
 import dgl
-from dgl.nn.pytorch import HeteroGraphConv, GraphConv
-# TODO add dropout?
+from dgl.nn.pytorch import GraphConv
+from .base import HeterogeneousAggregator
 
 
-class GCN(nn.Module):
+class GCN(HeterogeneousAggregator):
     def __init__(self, graph_embedding_dims, etypes):
-        super(GCN, self).__init__()
-        self.primary_etypes = [x for x in etypes if not x[1].endswith('-by')]
-        assert len(graph_embedding_dims) >= 2
-        self.layer_dict = nn.ModuleDict()
-        for etype in self.primary_etypes:
-            layers = nn.ModuleList()
-            for i in range(len(graph_embedding_dims) - 2):
-                layers.append(
-                    HeteroGraphConv({
-                        e: GraphConv(graph_embedding_dims[i],
-                                     graph_embedding_dims[i + 1],
-                                     activation=nn.ReLU())
-                        for e in [etype[1], f'{etype[1]}-by']
-                    }))
-            layers.append(
-                HeteroGraphConv({
-                    e: GraphConv(graph_embedding_dims[-2],
-                                 graph_embedding_dims[-1])
-                    for e in [etype[1], f'{etype[1]}-by']
-                }))
-            self.layer_dict[str(etype)] = layers
+        super().__init__(graph_embedding_dims, etypes)
 
-    def forward(self, blocks, input_embeddings):
-        '''
-        Args:
-            input_embeddings: {etype: {node_name: ...}}
-        Returns:
-            {etype: {node_name: ...}}
-        '''
-        different_embeddings = True if isinstance(
-            list(input_embeddings.values())[0], dict) else False
-        # dgl.add_self_loop(g) # TODO
-        output_embeddings = {}
-        for etype in self.primary_etypes:
-            if different_embeddings:
-                h = input_embeddings[etype]
-            else:
-                h = {
-                    node_name: input_embeddings[node_name]
-                    for node_name in [etype[0], etype[2]]
-                }
-            assert len(h) == 2
-            for layer, block in zip(self.layer_dict[str(etype)], blocks):
-                block = dgl.edge_type_subgraph(
-                    block, [etype, (etype[2], f'{etype[1]}-by', etype[0])])
-                h = layer(block, h)
-            assert len(h) == 2, 'Unknown error'
-            output_embeddings[etype] = h
-        return output_embeddings
+    def get_layer(self, input_dim, output_dim, current_layer, total_layer):
+        assert 0 <= current_layer <= total_layer - 1
+        if current_layer < total_layer - 1:
+            return GraphConv(input_dim, output_dim, activation=nn.ReLU())
+
+        return GraphConv(input_dim, output_dim)
 
 
 if __name__ == '__main__':

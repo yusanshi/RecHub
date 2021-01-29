@@ -13,7 +13,7 @@ class HeterogeneousNetwork(nn.Module):
     A general module for all graph-based models.
     '''
     def __init__(self, args, graph, tasks):
-        super(HeterogeneousNetwork, self).__init__()
+        super().__init__()
         self.args = args
         self.graph = graph
         self.primary_etypes = [
@@ -40,9 +40,11 @@ class HeterogeneousNetwork(nn.Module):
                                   graph.canonical_etypes)
         elif 'GAT' in args.model_name:
             self.aggregator = GAT(args.graph_embedding_dims,
+                                  graph.canonical_etypes,
                                   args.num_attention_heads)
         elif 'NGCF' in args.model_name:
-            self.aggregator = NGCF(args.graph_embedding_dims)
+            self.aggregator = NGCF(args.graph_embedding_dims,
+                                   graph.canonical_etypes)
         else:
             raise NotImplementedError
 

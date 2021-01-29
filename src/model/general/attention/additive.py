@@ -10,7 +10,7 @@ class AdditiveAttention(nn.Module):
     A general additive attention module.
     """
     def __init__(self, attention_query_vector_dim, candidate_vector_dim):
-        super(AdditiveAttention, self).__init__()
+        super().__init__()
         self.linear = nn.Linear(candidate_vector_dim,
                                 attention_query_vector_dim)
         self.attention_query_vector = nn.Parameter(

@@ -1,32 +1,32 @@
 import torch.nn as nn
 import dgl
 from dgl.nn.pytorch import GATConv
+from .base import HeterogeneousAggregator
 
 
-class GAT(nn.Module):
-    def __init__(self, graph_embedding_dims, num_attention_heads):
-        super(GAT, self).__init__()
-        assert len(graph_embedding_dims) >= 2
-        self.layers = nn.ModuleList()
-        for i in range(len(graph_embedding_dims) - 2):
-            self.layers.append(
-                GATConv(graph_embedding_dims[i] *
-                        (num_attention_heads if i >= 1 else 1),
-                        graph_embedding_dims[i + 1],
-                        num_attention_heads,
-                        activation=nn.ELU()))
-        self.layers.append(
-            GATConv(
-                graph_embedding_dims[-2] *
-                (num_attention_heads if len(graph_embedding_dims) >= 3 else 1),
-                graph_embedding_dims[-1], num_attention_heads))
+class GAT(HeterogeneousAggregator):
+    def __init__(self, graph_embedding_dims, etypes, num_attention_heads):
+        self.num_attention_heads = num_attention_heads  # Must put this before super().__init__()
+        super().__init__(graph_embedding_dims, etypes)
 
-    def forward(self, g, features):
-        g = dgl.add_self_loop(g)
-        h = features
-        for layer in self.layers:
-            h = layer(g, h)
-            h = h.view(h.size(0), -1)
+    def get_layer(self, input_dim, output_dim, current_layer, total_layer):
+        assert 0 <= current_layer <= total_layer - 1
+        if current_layer < total_layer - 1:
+            return GATConv(
+                input_dim *
+                (self.num_attention_heads if current_layer >= 1 else 1),
+                output_dim,
+                self.num_attention_heads,
+                activation=nn.ELU())
+
+        return GATConv(
+            input_dim * (self.num_attention_heads if total_layer >= 2 else 1),
+            output_dim, self.num_attention_heads)
+
+    def single_forward(self, layers, blocks, h):
+        for layer, block in zip(layers, blocks):
+            h = layer(block, h)
+            h.view(h.size(0), -1)
         return h
 
 

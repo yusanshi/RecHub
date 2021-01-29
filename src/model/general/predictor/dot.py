@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class DotPredictor(nn.Module):
     def __init__(self):
-        super(DotPredictor, self).__init__()
+        super().__init__()
 
     def forward(self, first_vector, second_vector):
         '''

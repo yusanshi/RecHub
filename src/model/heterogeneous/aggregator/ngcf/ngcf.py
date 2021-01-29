@@ -1,28 +1,25 @@
 import torch.nn as nn
 import dgl
 from .ngcf_conv import NGCFConv
+from ..base import HeterogeneousAggregator
 
 
-class NGCF(nn.Module):
-    def __init__(self, graph_embedding_dims):
-        super(NGCF, self).__init__()
-        assert len(graph_embedding_dims) >= 2
-        self.layers = nn.ModuleList()
-        for i in range(len(graph_embedding_dims) - 2):
-            self.layers.append(
-                NGCFConv(graph_embedding_dims[i],
-                         graph_embedding_dims[i + 1],
-                         activation=nn.LeakyReLU()))
-        self.layers.append(
-            NGCFConv(graph_embedding_dims[-2], graph_embedding_dims[-1]))
+class NGCF(HeterogeneousAggregator):
+    def __init__(self, graph_embedding_dims, etypes):
+        super().__init__(graph_embedding_dims, etypes)
 
-    def forward(self, g, features):
-        g = dgl.remove_self_loop(g)
+    def get_layer(self, input_dim, output_dim, current_layer, total_layer):
+        assert 0 <= current_layer <= total_layer - 1
+        if current_layer < total_layer - 1:
+            return NGCFConv(input_dim, output_dim, activation=nn.LeakyReLU())
+
+        return NGCFConv(input_dim, output_dim)
+
+    def single_forward(self, layers, blocks, h):
         outputs = []
-        h = features
         outputs.append(h)
-        for layer in self.layers:
-            h = layer(g, h)
+        for layer, block in zip(layers, blocks):
+            h = layer(block, h)
             outputs.append(h)
         return torch.cat(outputs, dim=-1)
 
