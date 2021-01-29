@@ -20,6 +20,10 @@
         "weighted": false
       },
       {
+        "filename": "anchor-item-sell.tsv",
+        "weighted": false
+      },
+      {
         "filename": "user-item-follow.tsv",
         "weighted": false
       },
@@ -29,10 +33,6 @@
       },
       {
         "filename": "user-anchor-follow.tsv",
-        "weighted": false
-      },
-      {
-        "filename": "anchor-item-sell.tsv",
         "weighted": false
       },
       {
