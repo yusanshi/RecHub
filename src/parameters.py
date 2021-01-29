@@ -21,10 +21,11 @@ def parse_args():
     parser.add_argument(
         '--neighbors_sampling_quantile',
         type=float,
-        default=0.95,
+        default=0.9,
         help=
         'Set the number of sampled neighbors to the quantile of the numbers of neighbors'
     )
+    parser.add_argument('--min_neighbors_sampled', type=int, default=8)
     parser.add_argument('--single_attribute_dim', type=int,
                         default=40)  # TODO: support attributes
     parser.add_argument('--attention_query_vector_dim', type=int, default=200)
