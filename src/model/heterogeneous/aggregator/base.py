@@ -58,13 +58,13 @@ class HeterogeneousAggregator(nn.Module):
                     for node_name in [etype[0], etype[2]]
                 }
             assert len(h) == 2
-            layers = self.layer_dict[str(etype)]
-            blocks = [
+            etype_layers = self.layer_dict[str(etype)]
+            etype_blocks = [
                 dgl.edge_type_subgraph(
                     block, [etype, (etype[2], f'{etype[1]}-by', etype[0])])
                 for block in blocks
             ]
-            h = self.single_forward(layers, blocks, h)
+            h = self.single_forward(etype_layers, etype_blocks, h)
             assert len(h) == 2, 'Unknown error'
             output_embeddings[etype] = h
         return output_embeddings

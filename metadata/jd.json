@@ -70,7 +70,7 @@
       "filename": "anchor-item-sell.tsv",
       "type": "top-k-recommendation",
       "loss": "binary-cross-entropy",
-      "weight": { "loss": 1, "metric": 0 }
+      "weight": { "loss": 1, "metric": 1 }
     },
     {
       "filename": "anchor-user-sell.tsv",
