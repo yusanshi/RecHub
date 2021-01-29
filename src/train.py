@@ -95,10 +95,12 @@ def train():
 
     batch = 0
     etype2num_neighbors = {
-        etype: max(
-            np.quantile(model.graph.in_degrees(etype=etype),
-                        args.neighbors_sampling_quantile,
-                        interpolation='nearest'), args.min_neighbors_sampled)
+        etype: min(
+            max(
+                np.quantile(model.graph.in_degrees(etype=etype),
+                            args.neighbors_sampling_quantile,
+                            interpolation='nearest'),
+                args.min_neighbors_sampled), args.max_neighbors_sampled)
         for etype in model.graph.canonical_etypes
     }
     logger.debug(f'Neighbors sampled {etype2num_neighbors}')

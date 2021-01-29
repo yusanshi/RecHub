@@ -25,6 +25,7 @@ def parse_args():
         help=
         'Set the number of sampled neighbors to the quantile of the numbers of neighbors'
     )
+    parser.add_argument('--max_neighbors_sampled', type=int, default=512)
     parser.add_argument('--min_neighbors_sampled', type=int, default=8)
     parser.add_argument('--single_attribute_dim', type=int,
                         default=40)  # TODO: support attributes
