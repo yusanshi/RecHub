@@ -149,9 +149,6 @@ def create_model(metadata, logger):
     #         'item') == 3
 
     graph_data = {}
-    if len([edge['scheme'][1] for edge in metadata['graph']['edge']]) != len(
-            set([edge['scheme'][1] for edge in metadata['graph']['edge']])):
-        raise NotImplementedError
 
     for edge in metadata['graph']['edge']:
         if edge['scheme'][0] == edge['scheme'][2]:
