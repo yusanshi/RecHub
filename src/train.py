@@ -94,16 +94,23 @@ def train():
     enlighten_manager = enlighten.get_manager()
 
     batch = 0
+    etype2num_neighbors = {
+        etype: np.quantile(model.graph.in_degrees(etype=etype),
+                           args.neighbors_sampling_quantile,
+                           interpolation='nearest')
+        for etype in model.graph.canonical_etypes
+    }
+    logger.debug(f'Neighbors sampled {etype2num_neighbors}')
+
     try:
         with enlighten_manager.counter(total=args.num_epochs,
                                        desc='Training epochs',
                                        unit='epochs') as epoch_pbar:
             for epoch in epoch_pbar(range(1, args.num_epochs + 1)):
                 if is_graph_model():
-                    assert len(args.num_neighbors_sampled) == len(
-                        args.graph_embedding_dims) - 1
                     neighbor_sampler = dgl.dataloading.MultiLayerNeighborSampler(
-                        args.num_neighbors_sampled)
+                        [etype2num_neighbors] *
+                        (len(args.graph_embedding_dims) - 1))
                 else:
                     neighbor_sampler = dgl.dataloading.MultiLayerNeighborSampler(
                         [0])  # TODO
