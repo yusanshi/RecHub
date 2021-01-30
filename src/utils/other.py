@@ -187,7 +187,7 @@ def create_logger():
     os.makedirs(log_dir, exist_ok=True)
     log_file_path = os.path.join(
         log_dir,
-        f"{str(datetime.datetime.now()).replace(' ', '_').replace(':', '-')}.txt"
+        f"{str(datetime.datetime.now()).replace(' ', '_').replace(':', '-')}{'-remark-' + os.environ['REMARK'] if 'REMARK' in os.environ else ''}.txt"
     )
     logger.info(f'Check {log_file_path} for the log of this run')
     file_hander = logging.FileHandler(log_file_path)

@@ -84,7 +84,7 @@ def train():
     start_time = time.time()
     writer = SummaryWriter(
         log_dir=
-        f"./runs/{args.model_name}-{args.dataset}/{str(datetime.datetime.now().replace(microsecond=0)).replace(' ', '_').replace(':', '-')}{'-' + os.environ['REMARK'] if 'REMARK' in os.environ else ''}"
+        f"./runs/{args.model_name}-{args.dataset}/{str(datetime.datetime.now().replace(microsecond=0)).replace(' ', '_').replace(':', '-')}{'-remark-' + os.environ['REMARK'] if 'REMARK' in os.environ else ''}"
     )
 
     if args.save_checkpoint:
