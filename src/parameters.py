@@ -25,7 +25,7 @@ def parse_args():
         help=
         'Set the number of sampled neighbors to the quantile of the numbers of neighbors'
     )
-    parser.add_argument('--min_neighbors_sampled', type=int, default=8)
+    parser.add_argument('--min_neighbors_sampled', type=int, default=4)
     parser.add_argument('--max_neighbors_sampled', type=int, default=512)
     parser.add_argument('--single_attribute_dim', type=int,
                         default=40)  # TODO: support attributes
@@ -40,7 +40,7 @@ def parse_args():
     )
     parser.add_argument('--num_batches_show_loss', type=int, default=50)
     parser.add_argument('--num_epochs_validate', type=int, default=5)
-    parser.add_argument('--early_stop_patience', type=int, default=10)
+    parser.add_argument('--early_stop_patience', type=int, default=20)
     parser.add_argument('--num_attention_heads', type=int, default=8)
     parser.add_argument('--save_checkpoint', type=str2bool, default=False)
     parser.add_argument('--different_embeddings', type=str2bool, default=True)
