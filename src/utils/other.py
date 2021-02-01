@@ -16,7 +16,7 @@ from .metrics import *
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()
 
-# A simple cache mechanism for df reading and sorting, since it will be run for many times
+# A simple cache mechanism for df reading, since it will be run for many times
 _df_cache_for_validation = {}
 
 
@@ -41,14 +41,21 @@ def evaluate(model, tasks, mode):
             df = _df_cache_for_validation[file_path]
         else:
             df = pd.read_table(file_path)
-            df.sort_values(df.columns[0], inplace=True)
             if mode == 'val':
                 _df_cache_for_validation[file_path] = df
 
+        true_indices = np.where(df['value'].values == 1)[0]
+        single_sample_length = true_indices[1] - true_indices[0]
+        assert np.all(np.diff(true_indices) == single_sample_length)
         columns = df.columns.tolist()
         test_data = np.transpose(df.values)
         test_data = torch.from_numpy(test_data).to(device)
         first_indexs, second_indexs, y_trues = test_data
+        first_indexs_stacked = first_indexs.view(-1, single_sample_length)
+        # Make sure equality in each rows
+        assert torch.all(
+            first_indexs_stacked.max(dim=-1)[0] == first_indexs_stacked.min(
+                dim=-1)[0])
         y_preds = []
         y_trues = y_trues.cpu().numpy()
         for i in range(math.ceil(len(df) / (8 * args.batch_size))):
@@ -65,12 +72,8 @@ def evaluate(model, tasks, mode):
         y_preds = np.concatenate(y_preds, axis=0)
 
         if task['type'] == 'top-k-recommendation':
-            single_sample_length = df.groupby(columns[0]).size().values
-            assert len(
-                set(single_sample_length)
-            ) == 1, f'The number of {columns[1]}s for different {columns[0]}s should be equal'
-            y_trues = y_trues.reshape(-1, single_sample_length[0])
-            y_preds = y_preds.reshape(-1, single_sample_length[0])
+            y_trues = y_trues.reshape(-1, single_sample_length)
+            y_preds = y_preds.reshape(-1, single_sample_length)
             metrics[task['name']] = {
                 'AUC':
                 fast_roc_auc_score(y_trues,
@@ -78,14 +81,14 @@ def evaluate(model, tasks, mode):
                                    num_processes=args.num_workers),
                 'MRR':
                 mrr(y_trues, y_preds),
+                'NDCG@5':
+                ndcg_score(y_trues, y_preds, k=5, ignore_ties=True),
                 'NDCG@10':
                 ndcg_score(y_trues, y_preds, k=10, ignore_ties=True),
-                'NDCG@50':
-                ndcg_score(y_trues, y_preds, k=50, ignore_ties=True),
+                'Recall@5':
+                recall(y_trues, y_preds, k=5),
                 'Recall@10':
                 recall(y_trues, y_preds, k=10),
-                'Recall@50':
-                recall(y_trues, y_preds, k=50),
             }
         elif task['type'] == 'interaction-attribute-regression':
             raise NotImplementedError
