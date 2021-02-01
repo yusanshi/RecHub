@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
-from ..general.attention import AdditiveAttention
 import dgl
+
 from .aggregator import GCN, GAT, NGCF
+from ..general.attention import AdditiveAttention
 from ..general.predictor import DNNPredictor, DotPredictor, WDotPredictor
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

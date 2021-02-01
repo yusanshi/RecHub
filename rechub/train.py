@@ -7,13 +7,14 @@ import json
 import os
 import time
 import datetime
-from parameters import parse_args
-from utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, process_metadata, dict2table, deep_apply, is_single_relation_model
-from loss import BPRLoss, MarginLoss
-from torch.utils.tensorboard import SummaryWriter
 import enlighten
 import copy
+from torch.utils.tensorboard import SummaryWriter
 from itertools import chain
+
+from .parameters import parse_args
+from .utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, process_metadata, dict2table, deep_apply, is_single_relation_model
+from .loss import BPRLoss, MarginLoss
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()

@@ -98,12 +98,11 @@ def parse_args():
                         nargs='+',
                         default=[],
                         help='Left empty to use all in metadata file')
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    if len(unknown) > 0:
+        print(
+            'Warning: if you are not in testing mode, you may have got some parameters wrong input'
+        )
     if args.metadata_path is None:
         args.metadata_path = f'metadata/{args.dataset}.json'
     return args
-
-
-if __name__ == '__main__':
-    args = parse_args()
-    print(args)

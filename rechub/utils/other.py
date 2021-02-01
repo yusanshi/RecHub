@@ -2,16 +2,17 @@ import numpy as np
 import pandas as pd
 import time
 import dgl
-from model import *  # TODO: how to import relatively
 import torch
-from parameters import parse_args  # TODO: how to import relatively
 import os
 import logging
 import coloredlogs
 import math
 import datetime
 import copy
+
 from .metrics import *
+from ..model import *
+from ..parameters import parse_args
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()

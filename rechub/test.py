@@ -1,7 +1,8 @@
 import torch
 import json
-from utils import evaluate, latest_checkpoint, create_model, create_logger, process_metadata, dict2table
-from parameters import parse_args
+
+from .utils import evaluate, latest_checkpoint, create_model, create_logger, process_metadata, dict2table
+from .parameters import parse_args
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args = parse_args()

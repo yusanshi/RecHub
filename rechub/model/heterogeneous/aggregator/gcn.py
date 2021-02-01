@@ -1,6 +1,7 @@
 import torch.nn as nn
 import dgl
 from dgl.nn.pytorch import GraphConv
+
 from .base import HeterogeneousAggregator
 
 
@@ -18,7 +19,7 @@ class GCN(HeterogeneousAggregator):
 
 if __name__ == '__main__':
     import torch
-    from utils import add_reverse
+    from ....utils import add_reverse
     graph = dgl.heterograph(
         add_reverse({
             ('user', 'follow', 'category'):
