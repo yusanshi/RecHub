@@ -52,13 +52,17 @@ class CATGCN(HeterogeneousAggregator):
     def single_forward(self, layers, blocks, h):
         outputs = []
         for layer, block in zip(layers, blocks):
-            # Since blocks have different size of input and output nodes,
-            # We should only save the nodes available in the last block output
-            outputs.append({
-                k: v[get_index(block.srcdata[dgl.NID][k],
-                               blocks[-1].dstdata[dgl.NID][k])]
-                for k, v in h.items()
-            })
+            if len(block.srcdata[dgl.NID]) == 0:
+                # If is not a block. TODO: better if condidation?
+                outputs.append(h)
+            else:
+                # Since blocks have different size of input and output nodes,
+                # We should only save the nodes available in the last block output
+                outputs.append({
+                    k: v[get_index(block.srcdata[dgl.NID][k],
+                                   blocks[-1].dstdata[dgl.NID][k])]
+                    for k, v in h.items()
+                })
             h = layer(block, h)
         outputs.append(h)
         outputs = {
