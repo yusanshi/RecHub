@@ -4,6 +4,9 @@ runs/
 log/
 temp/
 .vscode/
+metadata/*
+metadata/jd.json
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
