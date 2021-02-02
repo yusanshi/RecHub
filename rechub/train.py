@@ -24,6 +24,7 @@ def train():
     with open(args.metadata_path) as f:
         metadata = json.load(f)
         metadata = process_metadata(metadata)
+        logger.info(metadata)
 
     assert set([node['name'] for node in metadata['graph']['node']]) == set(
         chain.from_iterable([

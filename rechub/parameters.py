@@ -98,6 +98,8 @@ def parse_args():
                         nargs='+',
                         default=[],
                         help='Left empty to use all in metadata file')
+    parser.add_argument('--loss_weight_overwrite', type=int, nargs='+')
+    parser.add_argument('--metric_weight_overwrite', type=int, nargs='+')
     args, unknown = parser.parse_known_args()
     if len(unknown) > 0:
         print(

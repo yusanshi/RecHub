@@ -247,6 +247,17 @@ def process_metadata(metadata):
     assert any([x['weight']['metric'] > 0 for x in metadata['task']
                 ]), 'Make sure at least one task with positive metric weight'
 
+    if args.loss_weight_overwrite is not None:
+        assert len(metadata['task']) == len(args.loss_weight_overwrite)
+        for task, weight in zip(metadata['task'], args.loss_weight_overwrite):
+            task['weight']['loss'] = weight
+
+    if args.metric_weight_overwrite is not None:
+        assert len(metadata['task']) == len(args.metric_weight_overwrite)
+        for task, weight in zip(metadata['task'],
+                                args.metric_weight_overwrite):
+            task['weight']['metric'] = weight
+
     return metadata
 
 

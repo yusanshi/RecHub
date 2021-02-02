@@ -12,6 +12,8 @@ def test():
     with open(args.metadata_path) as f:
         metadata = json.load(f)
         metadata = process_metadata(metadata)
+        logger.info(metadata)
+
     model = create_model(metadata, logger).to(device)
     checkpoint_path = latest_checkpoint(
         f'./checkpoint/{args.model_name}-{args.dataset}')
