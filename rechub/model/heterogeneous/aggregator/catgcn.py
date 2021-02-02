@@ -18,7 +18,7 @@ def get_index(a, b):
     assert len(a.size()) == 1
     assert len(b.size()) == 1
     index = a.argsort()
-    return index[torch.searchsorted(a[index], b)]
+    return index[torch.bucketize(b, a[index])]
 
 
 # Two slow
