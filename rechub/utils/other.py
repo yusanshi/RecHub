@@ -203,7 +203,8 @@ def is_graph_model():
     if args.model_name in ['NCF']:
         return False
     if args.model_name in [
-            'GCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-GAT', 'HET-NGCF', 'GraphRec'
+            'GCN', 'CATGCN', 'GAT', 'NGCF', 'HET-GCN', 'HET-CATGCN', 'HET-GAT',
+            'HET-NGCF', 'GraphRec'
     ]:
         return True
 
@@ -211,9 +212,9 @@ def is_graph_model():
 
 
 def is_single_relation_model():
-    if args.model_name in ['NCF', 'GCN', 'GAT', 'NGCF']:
+    if args.model_name in ['NCF', 'GCN', 'CATGCN', 'GAT', 'NGCF']:
         return True
-    if args.model_name in ['HET-GCN', 'HET-GAT', 'HET-NGCF']:
+    if args.model_name in ['HET-GCN', 'HET-CATGCN', 'HET-GAT', 'HET-NGCF']:
         return False
 
     raise NotImplementedError

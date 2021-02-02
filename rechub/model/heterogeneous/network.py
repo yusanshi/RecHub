@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import dgl
 
-from .aggregator import GCN, GAT, NGCF
+from .aggregator import GCN, CATGCN, GAT, NGCF
 from ..general.attention import AdditiveAttention
 from ..general.predictor import DNNPredictor, DotPredictor, WDotPredictor
 
@@ -36,9 +36,13 @@ class HeterogeneousNetwork(nn.Module):
                 for node_name in graph.ntypes
             })
 
-        if 'GCN' in args.model_name:
+        # TODO
+        if args.model_name in ['GCN', 'HET-GCN']:
             self.aggregator = GCN(args.graph_embedding_dims,
                                   graph.canonical_etypes)
+        elif args.model_name in ['CATGCN', 'HET-CATGCN']:
+            self.aggregator = CATGCN(args.graph_embedding_dims,
+                                     graph.canonical_etypes)
         elif 'GAT' in args.model_name:
             self.aggregator = GAT(args.graph_embedding_dims,
                                   graph.canonical_etypes,
@@ -49,9 +53,11 @@ class HeterogeneousNetwork(nn.Module):
         else:
             raise NotImplementedError
 
-        final_single_embedding_dim = self.args.graph_embedding_dims[-1] * (
-            self.args.num_attention_heads
-            if 'GAT' in self.args.model_name else 1)
+        final_single_embedding_dim = (sum(args.graph_embedding_dims)
+                                      if 'CAT' in self.args.model_name else
+                                      args.graph_embedding_dims[-1]) * (
+                                          self.args.num_attention_heads if
+                                          'GAT' in self.args.model_name else 1)
 
         if args.embedding_aggregator == 'concat':
             embedding_num_dict = {
@@ -164,7 +170,6 @@ class HeterogeneousNetwork(nn.Module):
             predictor = self.predictor[task_name]
         else:
             predictor = self.predictor
-
         return predictor(provided_embeddings[first['name']][first['index']],
                          provided_embeddings[second['name']][second['index']])
 

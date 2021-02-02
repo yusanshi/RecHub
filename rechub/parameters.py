@@ -56,11 +56,13 @@ def parse_args():
 
             # Graph with single type of edge (we think it as homogeneous graph)
             'GCN',
+            'CATGCN',
             'GAT',
             'NGCF',
 
             # Graph with multiple types of edge (we think it as heterogeneous graph)
             'HET-GCN',
+            'HET-CATGCN',
             'HET-GAT',
             'HET-NGCF',
 
