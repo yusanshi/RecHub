@@ -55,10 +55,12 @@ class HeterogeneousNetwork(nn.Module):
 
         if args.embedding_aggregator == 'concat':
             embedding_num_dict = {
-                node_name: sum([
-                    node_name in [etype[0], etype[2]]
-                    for etype in self.primary_etypes
-                ])
+                node_name: len(
+                    set([
+                        etype[0] if node_name == etype[2] else etype[2]
+                        for etype in self.primary_etypes
+                        if node_name in [etype[0], etype[2]]
+                    ]))
                 for node_name in graph.ntypes
             }
             final_embedding_dim_dict = {
@@ -124,9 +126,9 @@ class HeterogeneousNetwork(nn.Module):
         # transpose the nested dict
         output_embeddings = {
             node_name: [
-                output_embeddings[etype][node_name]
-                for etype in output_embeddings.keys()
-                if node_name in output_embeddings[etype]
+                output_embeddings[node_pair][node_name]
+                for node_pair in output_embeddings.keys()
+                if node_name in output_embeddings[node_pair]
             ]
             for node_name in self.graph.ntypes
         }

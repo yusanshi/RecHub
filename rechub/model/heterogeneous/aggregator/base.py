@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import dgl
 from dgl.nn.pytorch import HeteroGraphConv
@@ -29,6 +30,23 @@ class HeterogeneousAggregator(nn.Module):
                     for e in [etype[1], f'{etype[1]}-by']
                 }))
             self.layer_dict[str(etype)] = layers
+        self.reduce_dim_dict = nn.ModuleDict()
+        self.node_pair2etype = {}
+        for etype in self.primary_etypes:
+            node_pair = tuple(sorted([etype[0], etype[2]]))
+            if node_pair in self.node_pair2etype:
+                self.node_pair2etype[node_pair].append(etype)
+            else:
+                self.node_pair2etype[node_pair] = [etype]
+
+        for node_pair, etypes in self.node_pair2etype.items():
+            if len(etypes) > 1:
+                self.reduce_dim_dict[str(node_pair)] = nn.ModuleDict({
+                    node_name:
+                    nn.Linear(graph_embedding_dims[-1] * len(etypes),
+                              graph_embedding_dims[-1])
+                    for node_name in node_pair
+                })
 
     def get_layer(self, input_dim, output_dim, current_layer, total_layer):
         raise NotImplementedError
@@ -67,6 +85,18 @@ class HeterogeneousAggregator(nn.Module):
             h = self.single_forward(etype_layers, etype_blocks, h)
             assert len(h) == 2, 'Unknown error'
             output_embeddings[etype] = h
+
+        output_embeddings = {
+            node_pair: {
+                node_name:
+                self.reduce_dim_dict[str(node_pair)][node_name](torch.cat(
+                    [output_embeddings[etype][node_name] for etype in etypes],
+                    dim=-1))
+                for node_name in node_pair
+            } if len(etypes) > 1 else output_embeddings[etypes[0]]
+            for node_pair, etypes in self.node_pair2etype.items()
+        }
+
         return output_embeddings
 
 
