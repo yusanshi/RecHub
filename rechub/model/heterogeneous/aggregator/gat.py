@@ -27,7 +27,8 @@ class GAT(HeterogeneousAggregator):
     def single_forward(self, layers, blocks, h):
         for layer, block in zip(layers, blocks):
             h = layer(block, h)
-            h.view(h.size(0), -1)
+            h = {k: v.view(v.size(0), -1) for k, v in h.items()}
+
         return h
 
 

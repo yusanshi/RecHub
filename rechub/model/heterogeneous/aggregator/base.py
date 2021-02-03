@@ -59,11 +59,18 @@ class HeterogeneousAggregator(nn.Module):
                 }
             assert len(h) == 2
             etype_layers = self.layer_dict[str(etype)]
-            etype_blocks = [
-                dgl.edge_type_subgraph(
-                    block, [etype, (etype[2], f'{etype[1]}-by', etype[0])])
-                for block in blocks
-            ]
+            # TODO
+            if blocks[0].is_block:
+                etype_blocks = blocks
+            else:
+                etype_blocks = [
+                    dgl.edge_type_subgraph(
+                        block, [etype, (etype[2], f'{etype[1]}-by', etype[0])])
+                    for block in blocks
+                ]
+                # TODO very dirty!
+                for x in etype_blocks:
+                    x.is_block = True
             h = self.single_forward(etype_layers, etype_blocks, h)
             assert len(h) == 2, 'Unknown error'
             output_embeddings[etype] = h
