@@ -10,7 +10,6 @@ import datetime
 import enlighten
 import copy
 from torch.utils.tensorboard import SummaryWriter
-from itertools import chain
 
 from .parameters import parse_args
 from .utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, process_metadata, dict2table, deep_apply, is_single_relation_model
@@ -25,16 +24,6 @@ def train():
         metadata = json.load(f)
         metadata = process_metadata(metadata)
         logger.info(metadata)
-
-    assert set([node['name'] for node in metadata['graph']['node']]) == set(
-        chain.from_iterable([
-            [edge['scheme'][0], edge['scheme'][2]]
-            for edge in metadata['graph']['edge']
-        ])), 'Node type differs between node metadata and edge metadata'
-
-    assert set([task['filename'] for task in metadata['task']]) <= set([
-        edge['filename'] for edge in metadata['graph']['edge']
-    ]), 'There are files in task metadata but not in graph edge metadata'
 
     model = create_model(metadata, logger).to(device)
     logger.info(model)

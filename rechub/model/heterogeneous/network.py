@@ -4,7 +4,7 @@ import dgl
 
 from .aggregator import GCN, GAT, NGCF
 from ..general.attention import AdditiveAttention
-from ..general.predictor import DNNPredictor, DotPredictor, WDotPredictor
+from ..general.predictor import DNNPredictor, DotPredictor
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -81,19 +81,11 @@ class HeterogeneousNetwork(nn.Module):
 
         if args.predictor == 'dot':
             self.predictor = DotPredictor()
-        elif args.predictor == 'Wdot':
-            # TODO what if two nodes belong to the same type
-            self.predictor = nn.ModuleDict({
-                task['name']:
-                WDotPredictor(final_embedding_dim_dict[task['name']],
-                              min(final_embedding_dim_dict[task['name']]))
-                for task in tasks
-            })
         elif args.predictor == 'dnn':
             self.predictor = nn.ModuleDict({
                 task['name']:
                 DNNPredictor(args.dnn_predictor_dims
-                             if args.dnn_predictor_dims[0] != 0 else [
+                             if args.dnn_predictor_dims[0] != -1 else [
                                  sum(final_embedding_dim_dict[task['name']]
                                      ), *args.dnn_predictor_dims[1:]
                              ])

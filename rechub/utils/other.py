@@ -9,6 +9,7 @@ import coloredlogs
 import math
 import datetime
 import copy
+from itertools import chain
 
 from .metrics import *
 from ..model import *
@@ -133,7 +134,10 @@ def create_model(metadata, logger):
                 f"The attributes of node {node['name']} are ignored")
 
     if is_single_relation_model():
+        assert len(metadata['graph']['node']) == 2
         assert len(metadata['graph']['edge']) == 1
+        first_node_name = metadata['graph']['edge'][0]['scheme'][0]
+        second_node_name = metadata['graph']['edge'][0]['scheme'][2]
     else:
         assert len(metadata['graph']['edge']) > 1
 
@@ -168,11 +172,8 @@ def create_model(metadata, logger):
         return model
 
     if args.model_name == 'NCF':
-        assert 'user' in num_nodes_dict and 'item' in num_nodes_dict
-        if len(num_nodes_dict) > 2:
-            logger.warning('Nodes except user and item are ignored')
-        model = NCF(args, graph, num_nodes_dict['user'],
-                    num_nodes_dict['item'])
+        model = NCF(args, graph, num_nodes_dict[first_node_name],
+                    num_nodes_dict[second_node_name])
         return model
 
     raise NotImplementedError(
@@ -231,21 +232,19 @@ def process_metadata(metadata):
         task['scheme'] = parse_scheme_from_filename(task['filename'])
         task['name'] = os.path.splitext(task['filename'])[0]
 
-    if args.node_choice:
-        metadata['graph']['node'] = [
-            metadata['graph']['node'][x] for x in args.node_choice
-        ]
     if args.edge_choice:
         metadata['graph']['edge'] = [
             metadata['graph']['edge'][x] for x in args.edge_choice
         ]
+    node_from_edge = set(
+        chain.from_iterable([[edge['scheme'][0], edge['scheme'][2]]
+                             for edge in metadata['graph']['edge']]))
+    metadata['graph']['node'] = [
+        x for x in metadata['graph']['node'] if x['name'] in node_from_edge
+    ]
+
     if args.task_choice:
         metadata['task'] = [metadata['task'][x] for x in args.task_choice]
-
-    assert any([x['weight']['loss'] > 0 for x in metadata['task']
-                ]), 'Make sure at least one task with positive loss weight'
-    assert any([x['weight']['metric'] > 0 for x in metadata['task']
-                ]), 'Make sure at least one task with positive metric weight'
 
     if args.loss_weight_overwrite is not None:
         assert len(metadata['task']) == len(args.loss_weight_overwrite)
@@ -257,6 +256,15 @@ def process_metadata(metadata):
         for task, weight in zip(metadata['task'],
                                 args.metric_weight_overwrite):
             task['weight']['metric'] = weight
+
+    assert any([x['weight']['loss'] > 0 for x in metadata['task']
+                ]), 'Make sure at least one task with positive loss weight'
+    assert any([x['weight']['metric'] > 0 for x in metadata['task']
+                ]), 'Make sure at least one task with positive metric weight'
+
+    assert set([task['filename'] for task in metadata['task']]) <= set([
+        edge['filename'] for edge in metadata['graph']['edge']
+    ]), 'There are files in task metadata but not in graph edge metadata'
 
     return metadata
 

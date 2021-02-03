@@ -5,7 +5,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class NCF(nn.Module):
-    def __init__(self, args, graph, user_num, item_num):
+    def __init__(self, args, graph, first_num, second_num):
         super().__init__()
         self.args = args
         # Load graph for negative sampling
@@ -15,17 +15,17 @@ class NCF(nn.Module):
         ]
         assert args.non_graph_embedding_dim % 4 == 0
         # TODO put the following dims into parameters
-        self.user_embedding = nn.ModuleDict({
+        self.first_embedding = nn.ModuleDict({
             'GMF':
-            nn.Embedding(user_num, args.non_graph_embedding_dim // 4),
+            nn.Embedding(first_num, args.non_graph_embedding_dim // 4),
             'MLP':
-            nn.Embedding(user_num, args.non_graph_embedding_dim)
+            nn.Embedding(first_num, args.non_graph_embedding_dim)
         })
-        self.item_embedding = nn.ModuleDict({
+        self.second_embedding = nn.ModuleDict({
             'GMF':
-            nn.Embedding(item_num, args.non_graph_embedding_dim // 4),
+            nn.Embedding(second_num, args.non_graph_embedding_dim // 4),
             'MLP':
-            nn.Embedding(item_num, args.non_graph_embedding_dim),
+            nn.Embedding(second_num, args.non_graph_embedding_dim),
         })
         self.MLP = nn.Sequential(
             nn.Linear(2 * args.non_graph_embedding_dim,
@@ -53,20 +53,19 @@ class NCF(nn.Module):
                 'index': (shape) batch_size
             }
         '''
-        assert first['name'] == 'user' and second['name'] == 'item'
-        user_index = first['index']
-        item_index = second['index']
+        first_index = first['index']
+        second_index = second['index']
 
         # batch_size, non_graph_embedding_dim // 4
         GMF_vector = torch.mul(
-            self.user_embedding['GMF'](user_index),
-            self.item_embedding['GMF'](item_index),
+            self.first_embedding['GMF'](first_index),
+            self.second_embedding['GMF'](second_index),
         )
         # batch_size, non_graph_embedding_dim // 4
         MLP_vector = self.MLP(
             torch.cat((
-                self.user_embedding['MLP'](user_index),
-                self.item_embedding['MLP'](item_index),
+                self.first_embedding['MLP'](first_index),
+                self.second_embedding['MLP'](second_index),
             ),
                       dim=-1))
         # batch_size

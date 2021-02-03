@@ -34,16 +34,16 @@ def parse_args():
         '--dnn_predictor_dims',
         type=int,
         nargs='+',
-        default=[0, 128, 1],
+        default=[-1, 128, 1],
         help=
-        'You can set first dim as 0 to make it automatically fit the input vector'
+        'You can set first dim as -1 to make it automatically fit the input vector'
     )
     parser.add_argument('--num_batches_show_loss', type=int, default=50)
     parser.add_argument('--num_epochs_validate', type=int, default=5)
     parser.add_argument('--early_stop_patience', type=int, default=20)
     parser.add_argument('--num_attention_heads', type=int, default=8)
     parser.add_argument('--save_checkpoint', type=str2bool, default=False)
-    parser.add_argument('--different_embeddings', type=str2bool, default=True)
+    parser.add_argument('--different_embeddings', type=str2bool, default=False)
     parser.add_argument('--negative_sampling_ratio', type=int, default=4)
 
     parser.add_argument(
@@ -81,13 +81,8 @@ def parse_args():
     parser.add_argument('--predictor',
                         type=str,
                         default='dnn',
-                        choices=['dot', 'Wdot', 'dnn'])
+                        choices=['dot', 'dnn'])
     parser.add_argument('--metadata_path', type=str)
-    parser.add_argument('--node_choice',
-                        type=int,
-                        nargs='+',
-                        default=[],
-                        help='Left empty to use all in metadata file')
     parser.add_argument('--edge_choice',
                         type=int,
                         nargs='+',
