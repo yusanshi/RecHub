@@ -28,6 +28,7 @@ class NGCFConv(nn.Module):
             #     raise DGLError(
             #         'You should first remove self loop with `dgl.remove_self_loop`.'
             #     )
+
             feat_src, feat_dst = expand_as_pair(feature, graph)
 
             degs = graph.out_degrees().float().clamp(min=1)
@@ -49,14 +50,13 @@ class NGCFConv(nn.Module):
             rst = torch.matmul(
                 graph.dstdata['h_self'], self.weight_self) + torch.matmul(
                     graph.dstdata['h_interaction'], self.weight_interaction)
+            # TODO adding the interaction part will reduce the performance
 
             degs = graph.in_degrees().float().clamp(min=1)
             norm = torch.pow(degs, -0.5)
             shp = norm.shape + (1, ) * (feat_dst.dim() - 1)
             norm = torch.reshape(norm, shp)
             rst = rst * norm
-
-            # rst = rst + torch.matmul(feat_dst, self.weight_self)
 
             if self.activation is not None:
                 rst = self.activation(rst)
