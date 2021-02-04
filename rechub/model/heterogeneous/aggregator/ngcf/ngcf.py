@@ -16,13 +16,13 @@ class NGCF(HeterogeneousAggregator):
 
         return NGCFConv(input_dim, output_dim)
 
-    def single_forward(self, layers, blocks, h):
-        outputs = []
-        outputs.append(h)
-        for layer, block in zip(layers, blocks):
-            h = layer(block, h)
-            outputs.append(h)
-        return torch.cat(outputs, dim=-1)
+    # def single_forward(self, layers, blocks, h):
+    #     outputs = []
+    #     outputs.append(h)
+    #     for layer, block in zip(layers, blocks):
+    #         h = layer(block, h)
+    #         outputs.append(h)
+    #     return torch.cat(outputs, dim=-1)
 
 
 if __name__ == '__main__':

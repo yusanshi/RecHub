@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import dgl.function as fn
-from dgl.base import DGLError
+# from dgl.base import DGLError
+from dgl.utils import expand_as_pair
 
 
 def has_self_loop(graph):
@@ -27,24 +28,21 @@ class NGCFConv(nn.Module):
             #     raise DGLError(
             #         'You should first remove self loop with `dgl.remove_self_loop`.'
             #     )
-
-            feature_original = feature
+            feat_src, feat_dst = expand_as_pair(feature, graph)
 
             degs = graph.out_degrees().float().clamp(min=1)
             norm = torch.pow(degs, -0.5)
-            shp = norm.shape + (1, ) * (feature.dim() - 1)
+            shp = norm.shape + (1, ) * (feat_src.dim() - 1)
             norm = torch.reshape(norm, shp)
-            feature = feature * norm
+            feat_src = feat_src * norm
 
-            graph.srcdata['h'] = feature
-            graph.srcdata['h_original'] = feature_original
+            graph.srcdata['h'] = feat_src
+            graph.dstdata['h'] = feat_dst
 
             graph.update_all(fn.copy_u('h', 'm'), fn.sum('m', 'h_self'))
 
             def message_func(edges):
-                return {
-                    'm': torch.mul(edges.src['h'], edges.dst['h_original'])
-                }
+                return {'m': torch.mul(edges.src['h'], edges.dst['h'])}
 
             graph.update_all(message_func, fn.sum('m', 'h_interaction'))
 
@@ -54,11 +52,11 @@ class NGCFConv(nn.Module):
 
             degs = graph.in_degrees().float().clamp(min=1)
             norm = torch.pow(degs, -0.5)
-            shp = norm.shape + (1, ) * (feature.dim() - 1)
+            shp = norm.shape + (1, ) * (feat_dst.dim() - 1)
             norm = torch.reshape(norm, shp)
             rst = rst * norm
 
-            rst = rst + torch.matmul(feature_original, self.weight_self)
+            # rst = rst + torch.matmul(feat_dst, self.weight_self)
 
             if self.activation is not None:
                 rst = self.activation(rst)
