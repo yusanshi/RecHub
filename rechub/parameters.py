@@ -95,7 +95,7 @@ def parse_args():
                         default=[],
                         help='Left empty to use all in metadata file')
     parser.add_argument('--task_loss_overwrite', type=str, nargs='+')
-    parser.add_argument('--task_weight_overwrite', type=int, nargs='+')
+    parser.add_argument('--task_weight_overwrite', type=float, nargs='+')
     args, unknown = parser.parse_known_args()
     if len(unknown) > 0:
         print(
