@@ -16,6 +16,7 @@ class NGCF(HeterogeneousAggregator):
 
         return NGCFConv(input_dim, output_dim)
 
+    # TODO NGCF should concat the outputs of all layers
     # def single_forward(self, layers, blocks, h):
     #     outputs = []
     #     outputs.append(h)

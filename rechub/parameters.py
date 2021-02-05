@@ -57,12 +57,14 @@ def parse_args():
             # Graph with single type of edge (we think it as homogeneous graph)
             'GCN',
             'GAT',
+            'LightGCN'
             'NGCF',
 
             # Graph with multiple types of edge (we think it as heterogeneous graph)
             'HET-GCN',
             'HET-GAT',
             'HET-NGCF',
+            'HET-LightGCN'
 
             # To be categorized
             'GraphRec',

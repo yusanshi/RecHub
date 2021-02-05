@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import dgl
 
-from .aggregator import GCN, GAT, NGCF
+from .aggregator import GCN, LightGCN, GAT, NGCF
 from ..general.attention import AdditiveAttention
 from ..general.predictor import DNNPredictor, DotPredictor
 
@@ -36,22 +36,29 @@ class HeterogeneousNetwork(nn.Module):
                 for node_name in graph.ntypes
             })
 
-        if 'GCN' in args.model_name:
+        if args.model_name in ['GCN', 'HET-GCN']:
             self.aggregator = GCN(args.graph_embedding_dims,
                                   graph.canonical_etypes)
-        elif 'GAT' in args.model_name:
+        elif args.model_name in ['LightGCN', 'HET-LightGCN']:
+            self.aggregator = LightGCN(args.graph_embedding_dims,
+                                       graph.canonical_etypes)
+        elif args.model_name in ['GAT', 'HET-GAT']:
             self.aggregator = GAT(args.graph_embedding_dims,
                                   graph.canonical_etypes,
                                   args.num_attention_heads)
-        elif 'NGCF' in args.model_name:
+        elif args.model_name in ['NGCF', 'HET-NGCF']:
             self.aggregator = NGCF(args.graph_embedding_dims,
                                    graph.canonical_etypes)
         else:
             raise NotImplementedError
 
-        final_single_embedding_dim = self.args.graph_embedding_dims[-1] * (
-            self.args.num_attention_heads
-            if 'GAT' in self.args.model_name else 1)
+        if args.model_name in ['GAT', 'HET-GAT']:
+            final_single_embedding_dim = self.args.graph_embedding_dims[
+                -1] * self.args.num_attention_heads
+        elif args.model_name in ['LightGCN', 'HET-LightGCN']:
+            final_single_embedding_dim = self.args.graph_embedding_dims[0]
+        else:
+            final_single_embedding_dim = self.args.graph_embedding_dims[-1]
 
         if args.embedding_aggregator == 'concat':
             embedding_num_dict = {
