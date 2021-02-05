@@ -245,9 +245,14 @@ def process_metadata(metadata):
     if args.task_choice:
         metadata['task'] = [metadata['task'][x] for x in args.task_choice]
 
-    if args.weight_overwrite is not None:
-        assert len(metadata['task']) == len(args.weight_overwrite)
-        for task, weight in zip(metadata['task'], args.weight_overwrite):
+    if args.task_loss_overwrite is not None:
+        assert len(metadata['task']) == len(args.task_loss_overwrite)
+        for task, loss in zip(metadata['task'], args.task_loss_overwrite):
+            task['loss'] = loss
+
+    if args.task_weight_overwrite is not None:
+        assert len(metadata['task']) == len(args.task_weight_overwrite)
+        for task, weight in zip(metadata['task'], args.task_weight_overwrite):
             task['weight'] = weight
 
     assert any([x['weight'] > 0 for x in metadata['task']
