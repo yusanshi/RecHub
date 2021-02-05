@@ -34,19 +34,19 @@
       "filename": "user-item-purchase.tsv",
       "type": "top-k-recommendation",
       "loss": "binary-cross-entropy",
-      "weight": { "loss": 1, "metric": 1 }
+      "weight": 1
     },
     {
       "filename": "user-streamer-follow.tsv",
       "type": "top-k-recommendation",
       "loss": "binary-cross-entropy",
-      "weight": { "loss": 1, "metric": 1 }
+      "weight": 1
     },
     {
       "filename": "streamer-item-sell.tsv",
       "type": "top-k-recommendation",
       "loss": "binary-cross-entropy",
-      "weight": { "loss": 1, "metric": 1 }
+      "weight": 1
     }
   ]
 }

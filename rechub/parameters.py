@@ -57,20 +57,19 @@ def parse_args():
             # Graph with single type of edge (we think it as homogeneous graph)
             'GCN',
             'GAT',
-            'LightGCN'
+            'LightGCN',
             'NGCF',
 
             # Graph with multiple types of edge (we think it as heterogeneous graph)
             'HET-GCN',
             'HET-GAT',
             'HET-NGCF',
-            'HET-LightGCN'
+            'HET-LightGCN',
 
             # To be categorized
             'GraphRec',
             'DeepFM',
             'DSSM',
-            'LightGCN',
             'DiffNet',
             'DiffNet++',
             'DANSER'
@@ -95,8 +94,7 @@ def parse_args():
                         nargs='+',
                         default=[],
                         help='Left empty to use all in metadata file')
-    parser.add_argument('--loss_weight_overwrite', type=int, nargs='+')
-    parser.add_argument('--metric_weight_overwrite', type=int, nargs='+')
+    parser.add_argument('--weight_overwrite', type=int, nargs='+')
     args, unknown = parser.parse_known_args()
     if len(unknown) > 0:
         print(

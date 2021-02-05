@@ -32,8 +32,11 @@ def train():
     metrics, _ = evaluate(model, metadata['task'], 'val')
     model.train()
     logger.info(f'Initial metrics on validation set {deep_apply(metrics)}')
-    best_checkpoint = copy.deepcopy(model.state_dict())
-    best_val_metrics = copy.deepcopy(metrics)
+    best_checkpoint_dict = {
+        task['name']: copy.deepcopy(model.state_dict())
+        for task in metadata['task']
+    }
+    best_val_metrics_dict = copy.deepcopy(metrics)
 
     criterions = {}
 
@@ -71,7 +74,10 @@ def train():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     loss_full = []
-    early_stopping = EarlyStopping(args.early_stop_patience)
+    early_stopping_dict = {
+        task['name']: EarlyStopping(args.early_stop_patience)
+        for task in metadata['task']
+    }
     start_time = time.time()
     writer = SummaryWriter(
         log_dir=
@@ -79,8 +85,10 @@ def train():
     )
 
     if args.save_checkpoint:
-        os.makedirs(f'./checkpoint/{args.model_name}-{args.dataset}',
-                    exist_ok=True)
+        for task in metadata['task']:
+            os.makedirs(
+                f"./checkpoint/{args.model_name}-{args.dataset}/{task['name']}",
+                exist_ok=True)
 
     enlighten_manager = enlighten.get_manager()
 
@@ -95,6 +103,8 @@ def train():
             for etype in model.graph.canonical_etypes
         }
         logger.debug(f'Neighbors sampled {etype2num_neighbors}')
+
+    not_stopped_task = [x['name'] for x in metadata['task']]
 
     try:
         with enlighten_manager.counter(total=args.num_epochs,
@@ -252,7 +262,7 @@ def train():
                             else:
                                 raise NotImplementedError
 
-                            loss += task_loss * task['weight']['loss']
+                            loss += task_loss * task['weight']
 
                             if len(metadata['task']) > 1:
                                 writer.add_scalar(f"Train/Loss/{task['name']}",
@@ -270,8 +280,12 @@ def train():
 
                 if epoch % args.num_epochs_validate == 0:
                     model.eval()
-                    metrics, overall = evaluate(model, metadata['task'], 'val')
+                    metrics, overall = evaluate(model, [
+                        x for x in metadata['task']
+                        if x['name'] in not_stopped_task
+                    ], 'val')
                     model.train()
+
                     for task_name, values in metrics.items():
                         for metric, value in values.items():
                             writer.add_scalar(
@@ -280,28 +294,41 @@ def train():
                     logger.info(
                         f"Time {time_since(start_time)}, epoch {epoch}, metrics {deep_apply(metrics)}"
                     )
-                    early_stop, get_better = early_stopping(-overall)
-                    if early_stop:
-                        logger.info('Early stop.')
+                    for task_name in copy.deepcopy(not_stopped_task):
+                        early_stop, get_better = early_stopping_dict[
+                            task_name](-overall[task_name])
+                        if early_stop:
+                            not_stopped_task.remove(task_name)
+                            logger.info(f'Task {task_name} early stopped')
+                        elif get_better:
+                            best_checkpoint_dict[task_name] = copy.deepcopy(
+                                model.state_dict())
+                            best_val_metrics_dict[task_name] = copy.deepcopy(
+                                metrics[task_name])
+                            if args.save_checkpoint:
+                                torch.save(
+                                    {'model_state_dict': model.state_dict()},
+                                    f"./checkpoint/{args.model_name}-{args.dataset}/{task_name}/ckpt-{epoch}.pt"
+                                )
+
+                    if not not_stopped_task:
+                        logger.info('All tasks early stopped')
                         break
-                    elif get_better:
-                        best_checkpoint = copy.deepcopy(model.state_dict())
-                        best_val_metrics = copy.deepcopy(metrics)
-                        if args.save_checkpoint:
-                            torch.save({
-                                'model_state_dict': model.state_dict()
-                            }, f"./checkpoint/{args.model_name}-{args.dataset}/ckpt-{epoch}.pt"
-                                       )
 
     except KeyboardInterrupt:
-        logger.info('Stop in advance.')
+        logger.info('Stop in advance')
 
     logger.info(
-        f'Best metrics on validation set\n{dict2table(best_val_metrics)}')
-    model.load_state_dict(best_checkpoint)
-    model.eval()
-    metrics, _ = evaluate(model, metadata['task'], 'test')
-    logger.info(f'Metrics on test set\n{dict2table(metrics)}')
+        f'Best metrics on validation set\n{dict2table(best_val_metrics_dict)}')
+    test_metrics_dict = {}
+    for task_name, checkpoint in best_checkpoint_dict.items():
+        model.load_state_dict(checkpoint)
+        model.eval()
+        metrics, _ = evaluate(
+            model, [x for x in metadata['task'] if x['name'] == task_name],
+            'test')
+        test_metrics_dict[task_name] = metrics[task_name]
+    logger.info(f'Metrics on test set\n{dict2table(test_metrics_dict)}')
 
 
 if __name__ == '__main__':

@@ -93,10 +93,8 @@ def evaluate(model, tasks, mode):
             raise NotImplementedError
         else:
             raise NotImplementedError
-    overall = np.mean([
-        np.mean(list(metrics[task['name']].values())) *
-        task['weight']['metric'] for task in tasks
-    ])
+
+    overall = {k: np.mean(list(v.values())) for k, v in metrics.items()}
     return metrics, overall
 
 
@@ -247,21 +245,13 @@ def process_metadata(metadata):
     if args.task_choice:
         metadata['task'] = [metadata['task'][x] for x in args.task_choice]
 
-    if args.loss_weight_overwrite is not None:
-        assert len(metadata['task']) == len(args.loss_weight_overwrite)
-        for task, weight in zip(metadata['task'], args.loss_weight_overwrite):
-            task['weight']['loss'] = weight
+    if args.weight_overwrite is not None:
+        assert len(metadata['task']) == len(args.weight_overwrite)
+        for task, weight in zip(metadata['task'], args.weight_overwrite):
+            task['weight'] = weight
 
-    if args.metric_weight_overwrite is not None:
-        assert len(metadata['task']) == len(args.metric_weight_overwrite)
-        for task, weight in zip(metadata['task'],
-                                args.metric_weight_overwrite):
-            task['weight']['metric'] = weight
-
-    assert any([x['weight']['loss'] > 0 for x in metadata['task']
-                ]), 'Make sure at least one task with positive loss weight'
-    assert any([x['weight']['metric'] > 0 for x in metadata['task']
-                ]), 'Make sure at least one task with positive metric weight'
+    assert any([x['weight'] > 0 for x in metadata['task']
+                ]), 'Make sure at least one task with positive weight'
 
     assert set([task['filename'] for task in metadata['task']]) <= set([
         edge['filename'] for edge in metadata['graph']['edge']
