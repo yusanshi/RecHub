@@ -242,8 +242,10 @@ def process_metadata(metadata):
         x for x in metadata['graph']['node'] if x['name'] in node_from_edge
     ]
 
-    if args.task_choice:
-        metadata['task'] = [metadata['task'][x] for x in args.task_choice]
+    if args.training_task_choice:
+        metadata['task'] = [
+            metadata['task'][x] for x in args.training_task_choice
+        ]
 
     if args.task_loss_overwrite is not None:
         assert len(metadata['task']) == len(args.task_loss_overwrite)

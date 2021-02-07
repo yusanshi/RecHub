@@ -28,8 +28,13 @@ def train():
     model = create_model(metadata, logger).to(device)
     logger.info(model)
 
+    if not args.evaluation_task_choice:
+        task_to_evaluate = [x['name'] for x in metadata['task']]
+
     model.eval()
-    metrics, _ = evaluate(model, metadata['task'], 'val')
+    metrics, _ = evaluate(
+        model, [x for x in metadata['task'] if x['name'] in task_to_evaluate],
+        'val')
     model.train()
     logger.info(f'Initial metrics on validation set {deep_apply(metrics)}')
     best_checkpoint_dict = {
@@ -103,8 +108,6 @@ def train():
             for etype in model.graph.canonical_etypes
         }
         logger.debug(f'Neighbors sampled {etype2num_neighbors}')
-
-    not_stopped_task = [x['name'] for x in metadata['task']]
 
     try:
         with enlighten_manager.counter(total=args.num_epochs,
@@ -282,7 +285,7 @@ def train():
                     model.eval()
                     metrics, overall = evaluate(model, [
                         x for x in metadata['task']
-                        if x['name'] in not_stopped_task
+                        if x['name'] in task_to_evaluate
                     ], 'val')
                     model.train()
 
@@ -294,11 +297,11 @@ def train():
                     logger.info(
                         f"Time {time_since(start_time)}, epoch {epoch}, metrics {deep_apply(metrics)}"
                     )
-                    for task_name in copy.deepcopy(not_stopped_task):
+                    for task_name in copy.deepcopy(task_to_evaluate):
                         early_stop, get_better = early_stopping_dict[
                             task_name](-overall[task_name])
                         if early_stop:
-                            not_stopped_task.remove(task_name)
+                            task_to_evaluate.remove(task_name)
                             logger.info(f'Task {task_name} early stopped')
                         elif get_better:
                             best_checkpoint_dict[task_name] = copy.deepcopy(
@@ -311,7 +314,7 @@ def train():
                                     f"./checkpoint/{args.model_name}-{args.dataset}/{task_name}/ckpt-{epoch}.pt"
                                 )
 
-                    if not not_stopped_task:
+                    if not task_to_evaluate:
                         logger.info('All tasks early stopped')
                         break
 

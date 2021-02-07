@@ -89,8 +89,13 @@ def parse_args():
                         nargs='+',
                         default=[],
                         help='Left empty to use all in metadata file')
-    parser.add_argument('--task_choice',
+    parser.add_argument('--training_task_choice',
                         type=int,
+                        nargs='+',
+                        default=[],
+                        help='Left empty to use all in metadata file')
+    parser.add_argument('--evaluation_task_choice',
+                        type=str,
                         nargs='+',
                         default=[],
                         help='Left empty to use all in metadata file')
