@@ -29,7 +29,7 @@ def train():
     logger.info(model)
 
     if args.evaluation_task_choice:
-        task_to_evaluate = args.task_to_evaluate
+        task_to_evaluate = args.evaluation_task_choice
     else:
         task_to_evaluate = [x['name'] for x in metadata['task']]
 
