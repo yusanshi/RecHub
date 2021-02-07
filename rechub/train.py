@@ -28,7 +28,9 @@ def train():
     model = create_model(metadata, logger).to(device)
     logger.info(model)
 
-    if not args.evaluation_task_choice:
+    if args.evaluation_task_choice:
+        task_to_evaluate = args.task_to_evaluate
+    else:
         task_to_evaluate = [x['name'] for x in metadata['task']]
 
     model.eval()
