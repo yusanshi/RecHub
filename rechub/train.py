@@ -28,10 +28,7 @@ def train():
     model = create_model(metadata, logger).to(device)
     logger.info(model)
 
-    if args.evaluation_task_choice:
-        task_to_evaluate = args.evaluation_task_choice
-    else:
-        task_to_evaluate = [x['name'] for x in metadata['task']]
+    task_to_evaluate = [x['name'] for x in metadata['task'] if x['evaluation']]
 
     model.eval()
     metrics, _ = evaluate(
@@ -40,8 +37,8 @@ def train():
     model.train()
     logger.info(f'Initial metrics on validation set {deep_apply(metrics)}')
     best_checkpoint_dict = {
-        task['name']: copy.deepcopy(model.state_dict())
-        for task in metadata['task']
+        task: copy.deepcopy(model.state_dict())
+        for task in task_to_evaluate
     }
     best_val_metrics_dict = copy.deepcopy(metrics)
 

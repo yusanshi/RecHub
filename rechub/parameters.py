@@ -95,10 +95,10 @@ def parse_args():
                         default=[],
                         help='Left empty to use all in metadata file')
     parser.add_argument('--evaluation_task_choice',
-                        type=str,
+                        type=int,
                         nargs='+',
                         default=[],
-                        help='Left empty to use all in metadata file')
+                        help='Left empty to use all in `training_task_choice`')
     parser.add_argument('--task_loss_overwrite', type=str, nargs='+')
     parser.add_argument('--task_weight_overwrite', type=float, nargs='+')
     args, unknown = parser.parse_known_args()

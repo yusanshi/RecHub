@@ -17,6 +17,9 @@ def test():
     model = create_model(metadata, logger).to(device)
     test_metrics_dict = {}
     for task in metadata['task']:
+        if not task['evaluation']:
+            continue
+
         checkpoint_path = latest_checkpoint(
             f"./checkpoint/{args.model_name}-{args.dataset}/{task['name']}")
         if checkpoint_path is None:

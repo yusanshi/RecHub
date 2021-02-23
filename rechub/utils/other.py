@@ -242,10 +242,15 @@ def process_metadata(metadata):
         x for x in metadata['graph']['node'] if x['name'] in node_from_edge
     ]
 
-    if args.training_task_choice:
-        metadata['task'] = [
-            metadata['task'][x] for x in args.training_task_choice
-        ]
+    training_task_choice = args.training_task_choice if args.training_task_choice else list(
+        range(len(metadata['task'])))
+    evaluation_task_choice = args.evaluation_task_choice if args.evaluation_task_choice else training_task_choice
+    assert set(evaluation_task_choice) <= set(
+        training_task_choice
+    ), 'There are tasks in evaluation but not in training'
+    metadata['task'] = [{
+        **metadata['task'][x], 'evaluation': (x in evaluation_task_choice)
+    } for x in training_task_choice]
 
     if args.task_loss_overwrite is not None:
         assert len(metadata['task']) == len(args.task_loss_overwrite)
