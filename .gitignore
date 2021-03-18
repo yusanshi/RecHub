@@ -2,10 +2,9 @@ data/
 checkpoint/
 runs/
 log/
-temp/
+metadata/
 .vscode/
-metadata/*
-!metadata/jd.json
+
 
 
 # Byte-compiled / optimized / DLL files
