@@ -12,7 +12,7 @@ import copy
 from torch.utils.tensorboard import SummaryWriter
 
 from .parameters import parse_args
-from .utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, process_metadata, dict2table, deep_apply, is_single_relation_model
+from .utils import EarlyStopping, evaluate, time_since, create_model, create_logger, is_graph_model, process_metadata, dict2table, deep_apply, is_single_relation_model, get_dataset_name
 from .loss import BPRLoss, MarginLoss
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -83,16 +83,20 @@ def train():
         for task in metadata['task']
     }
     start_time = time.time()
-    writer = SummaryWriter(
-        log_dir=
-        f"./runs/{args.model_name}-{args.dataset}/{str(datetime.datetime.now().replace(microsecond=0)).replace(' ', '_').replace(':', '-')}{'-remark-' + os.environ['REMARK'] if 'REMARK' in os.environ else ''}"
-    )
+    writer = SummaryWriter(log_dir=os.path.join(
+        args.tensorboard_runs_path,
+        f'{args.model_name}-{get_dataset_name(args.dataset_path)}',
+        f"{str(datetime.datetime.now().replace(microsecond=0)).replace(' ', '_').replace(':', '-')}{'-remark-' + os.environ['REMARK'] if 'REMARK' in os.environ else ''}",
+    ))
 
     if args.save_checkpoint:
         for task in metadata['task']:
-            os.makedirs(
-                f"./checkpoint/{args.model_name}-{args.dataset}/{task['name']}",
-                exist_ok=True)
+            os.makedirs(os.path.join(
+                args.checkpoint_path,
+                f'{args.model_name}-{get_dataset_name(args.dataset_path)}',
+                task['name'],
+            ),
+                        exist_ok=True)
 
     enlighten_manager = enlighten.get_manager()
 
@@ -310,8 +314,10 @@ def train():
                             if args.save_checkpoint:
                                 torch.save(
                                     {'model_state_dict': model.state_dict()},
-                                    f"./checkpoint/{args.model_name}-{args.dataset}/{task_name}/ckpt-{epoch}.pt"
-                                )
+                                    os.path.join(
+                                        args.checkpoint_path,
+                                        f'{args.model_name}-{get_dataset_name(args.dataset_path)}',
+                                        task['name'], f'ckpt-{epoch}.pt'))
 
                     if not task_to_evaluate:
                         logger.info('All tasks early stopped')
@@ -338,5 +344,6 @@ if __name__ == '__main__':
     logger.info(args)
     logger.info(f'Using device: {device}')
     logger.info(
-        f'Training model {args.model_name} with dataset {args.dataset}')
+        f'Training model {args.model_name} with dataset {get_dataset_name(args.dataset_path)}'
+    )
     train()

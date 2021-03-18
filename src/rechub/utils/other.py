@@ -38,7 +38,7 @@ def evaluate(model, tasks, mode):
         provided_embeddings = None
 
     for task in tasks:
-        file_path = f"./data/{args.dataset}/{mode}/{task['filename']}"
+        file_path = os.path.join(args.dataset_path, mode, task['filename'])
         if mode == 'val' and file_path in _df_cache_for_validation:
             df = _df_cache_for_validation[file_path]
         else:
@@ -122,8 +122,9 @@ def latest_checkpoint(directory):
 
 def create_model(metadata, logger):
     num_nodes_dict = {
-        node['name']:
-        len(pd.read_table(f"./data/{args.dataset}/train/{node['name']}.tsv"))
+        node['name']: len(
+            pd.read_table(
+                os.path.join(args.dataset_path, 'train', node['filename'])))
         for node in metadata['graph']['node']
     }
     for node in metadata['graph']['node']:
@@ -157,7 +158,8 @@ def create_model(metadata, logger):
         if edge['scheme'][0] == edge['scheme'][2]:
             raise NotImplementedError
 
-        df = pd.read_table(f"./data/{args.dataset}/train/{edge['filename']}")
+        df = pd.read_table(
+            os.path.join(args.dataset_path, 'train', edge['filename']))
         graph_data[edge['scheme']] = (torch.as_tensor(df.iloc[:, 0].values),
                                       torch.as_tensor(df.iloc[:, 1].values))
 
@@ -183,7 +185,9 @@ def create_logger():
     coloredlogs.install(level='DEBUG',
                         logger=logger,
                         fmt='%(asctime)s %(levelname)s %(message)s')
-    log_dir = f'./log/{args.model_name}-{args.dataset}'
+    log_dir = os.path.join(
+        args.log_path,
+        f'{args.model_name}-{get_dataset_name(args.dataset_path)}')
     os.makedirs(log_dir, exist_ok=True)
     log_file_path = os.path.join(
         log_dir,
@@ -225,6 +229,8 @@ def process_metadata(metadata):
         assert len(filename) == 3
         return tuple(filename[x] for x in [0, 2, 1])
 
+    for node in metadata['graph']['node']:
+        node['name'] = os.path.splitext(node['filename'])[0]
     for edge in metadata['graph']['edge']:
         edge['scheme'] = parse_scheme_from_filename(edge['filename'])
     for task in metadata['task']:
@@ -340,3 +346,7 @@ def dict2table(d, k_fn=str, v_fn=lambda x: f'{x:.4f}'):
 
     lines = [parse_header(d), *parse_content(d)]
     return '\n'.join(lines)
+
+
+def get_dataset_name(dataset_path):
+    return os.path.abspath(dataset_path).split('/')[-1]

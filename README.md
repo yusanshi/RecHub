@@ -1,4 +1,4 @@
-# RecHub [WIP]
+# RecHub
 
 Implementations of some methods in recommendation.
 
@@ -18,9 +18,7 @@ Implementations of some methods in recommendation.
 |              |           |                     |       |
 |              |           |                     |       |
 
-> Note: we define the heterogeneous graph as a graph *with different types of **edges*** instead of a graph *with different types of **edges or nodes***. Thus, for a common user-item bipartite graph, although more than one types of node exist, we still think it as a homogeneous graph.
-
-
+> Note: we define the heterogeneous graph as a graph with different types of **edges** instead of a graph with different types of **edges or nodes**. Thus, for a common user-item bipartite graph, although more than one types of node exist, we still think it as a homogeneous graph.
 
 **WIP**
 

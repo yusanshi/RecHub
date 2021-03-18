@@ -1,7 +1,8 @@
 import torch
 import json
+import os
 
-from .utils import evaluate, latest_checkpoint, create_model, create_logger, process_metadata, dict2table
+from .utils import evaluate, latest_checkpoint, create_model, create_logger, process_metadata, dict2table, get_dataset_name
 from .parameters import parse_args
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -21,7 +22,11 @@ def test():
             continue
 
         checkpoint_path = latest_checkpoint(
-            f"./checkpoint/{args.model_name}-{args.dataset}/{task['name']}")
+            os.path.join(
+                args.checkpoint_path,
+                f'{args.model_name}-{get_dataset_name(args.dataset_path)}',
+                task['name'],
+            ))
         if checkpoint_path is None:
             logger.error(f"No checkpoint file for task {task['name']} found!")
             exit()
@@ -39,5 +44,7 @@ if __name__ == '__main__':
     logger = create_logger()
     logger.info(args)
     logger.info(f'Using device: {device}')
-    logger.info(f'Testing model {args.model_name} with dataset {args.dataset}')
+    logger.info(
+        f'Testing model {args.model_name} with dataset {get_dataset_name(args.dataset_path)}'
+    )
     test()
