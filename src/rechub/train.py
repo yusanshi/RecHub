@@ -90,11 +90,11 @@ def train():
     ))
 
     if args.save_checkpoint:
-        for task in metadata['task']:
+        for task_name in task_to_evaluate:
             os.makedirs(os.path.join(
                 args.checkpoint_path,
                 f'{args.model_name}-{get_dataset_name(args.dataset_path)}',
-                task['name'],
+                task_name,
             ),
                         exist_ok=True)
 
@@ -317,7 +317,7 @@ def train():
                                     os.path.join(
                                         args.checkpoint_path,
                                         f'{args.model_name}-{get_dataset_name(args.dataset_path)}',
-                                        task['name'], f'ckpt-{epoch}.pt'))
+                                        task_name, f'ckpt-{epoch}.pt'))
 
                     if not task_to_evaluate:
                         logger.info('All tasks early stopped')
