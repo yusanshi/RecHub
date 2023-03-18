@@ -1,6 +1,6 @@
 # RecHub
 
-Implementations of some methods in recommendation.
+A library for GNN-based recommendation system.
 
 ## Models
 
@@ -22,7 +22,6 @@ Note: we define the heterogeneous graph as a graph with different types of **edg
 
 - DeepFM
 - DSSM
-- LightGCN
 - DiffNet
 - DiffNet++
 - DANSER

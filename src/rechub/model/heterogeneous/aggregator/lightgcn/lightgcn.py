@@ -21,6 +21,7 @@ def get_index(a, b):
 
 
 class LightGCN(HeterogeneousAggregator):
+
     def __init__(self, graph_embedding_dims, etypes):
         super().__init__(graph_embedding_dims, etypes)
 
